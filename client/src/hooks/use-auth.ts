@@ -73,6 +73,24 @@ export function useAuth() {
     },
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<InsertUser>) => {
+      const res = await fetch(api.users.updateProfile.path, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Profile update failed");
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
+    },
+  });
+
   return {
     user: user?.user || null,
     admin: user?.admin || null,
@@ -81,5 +99,6 @@ export function useAuth() {
     loginAdmin: loginAdminMutation,
     logout: logoutMutation,
     register: registerMutation,
+    updateProfile: updateProfileMutation,
   };
 }
