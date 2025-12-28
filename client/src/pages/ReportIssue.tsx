@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Image as ImageIcon, MapPin } from "lucide-react";
+import { ImageModal } from "@/components/ImageModal";
 
 export default function ReportIssue() {
   const createIssue = useCreateIssue();
@@ -181,13 +182,24 @@ export default function ReportIssue() {
                   <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 5MB</p>
                 </div>
               ) : (
-                <div className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video group">
-                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button variant="destructive" size="sm" onClick={removeImage}>
-                      <X className="h-4 w-4 mr-2" /> Remove Photo
-                    </Button>
-                  </div>
+                <div className="space-y-2">
+                  <ImageModal 
+                    src={previewUrl}
+                    alt="Preview"
+                  >
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video group cursor-pointer">
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  </ImageModal>
+                  <Button 
+                    type="button"
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={removeImage}
+                    className="w-full"
+                  >
+                    <X className="h-4 w-4 mr-2" /> Remove Photo
+                  </Button>
                 </div>
               )}
               <input 

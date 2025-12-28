@@ -7,6 +7,7 @@ import { useVoteIssue } from "@/hooks/use-issues";
 import { useToast } from "@/hooks/use-toast";
 import { type IssueWithVoteCount } from "@shared/schema";
 import { motion } from "framer-motion";
+import { ImageModal } from "@/components/ImageModal";
 
 interface IssueCardProps {
   issue: IssueWithVoteCount;
@@ -45,34 +46,39 @@ export function IssueCard({ issue, isAdmin, onStatusChange }: IssueCardProps) {
     >
       <Card className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow group h-full flex flex-col">
         {/* Image Section */}
-        <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
-          {issue.image ? (
-            <img 
-              src={`/uploads/${issue.image}`} 
-              alt={issue.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400">
-              <AlertCircle className="h-10 w-10 mb-2 opacity-20" />
-              <span className="text-sm font-medium opacity-40">No image provided</span>
+        <ImageModal 
+          src={issue.image ? `/uploads/${issue.image}` : null}
+          alt={issue.title}
+        >
+          <div className="relative h-48 w-full bg-slate-100 overflow-hidden cursor-pointer">
+            {issue.image ? (
+              <img 
+                src={`/uploads/${issue.image}`} 
+                alt={issue.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <AlertCircle className="h-10 w-10 mb-2 opacity-20" />
+                <span className="text-sm font-medium opacity-40">No image provided</span>
+              </div>
+            )}
+            <div className="absolute top-3 right-3">
+              <Badge 
+                variant="outline" 
+                className={`${statusColors[issue.status as keyof typeof statusColors] || "bg-slate-100"} backdrop-blur-sm shadow-sm font-semibold`}
+              >
+                {issue.status}
+              </Badge>
             </div>
-          )}
-          <div className="absolute top-3 right-3">
-            <Badge 
-              variant="outline" 
-              className={`${statusColors[issue.status as keyof typeof statusColors] || "bg-slate-100"} backdrop-blur-sm shadow-sm font-semibold`}
-            >
-              {issue.status}
-            </Badge>
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+            <div className="absolute bottom-3 left-3 text-white text-xs font-medium flex items-center gap-1">
+               <Badge variant="secondary" className="bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30">
+                 {issue.category}
+               </Badge>
+            </div>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-          <div className="absolute bottom-3 left-3 text-white text-xs font-medium flex items-center gap-1">
-             <Badge variant="secondary" className="bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30">
-               {issue.category}
-             </Badge>
-          </div>
-        </div>
+        </ImageModal>
 
         <CardHeader className="p-4 pb-2">
           <div className="flex justify-between items-start gap-2">
