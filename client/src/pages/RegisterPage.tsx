@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -22,6 +22,7 @@ export default function RegisterPage() {
     address: "",
     ward: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,10 +74,17 @@ export default function RegisterPage() {
               <Input 
                 id="mobile" 
                 required 
+                type="tel"
                 value={formData.mobile}
-                onChange={(e) => setFormData({...formData, mobile: e.target.value})}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({...formData, mobile: value});
+                }}
                 placeholder="9876543210"
+                maxLength={10}
+                data-testid="input-mobile"
               />
+              <p className="text-xs text-slate-500">10 digits required</p>
             </div>
 
             <div className="space-y-2">
@@ -119,14 +127,28 @@ export default function RegisterPage() {
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="password">Create Password <span className="text-red-500">*</span></Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                placeholder="Min 6 characters"
-              />
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  placeholder="Min 6 characters"
+                  className="pr-10"
+                  data-testid="input-password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-500 hover:text-slate-700"
+                  onClick={() => setShowPassword(!showPassword)}
+                  data-testid="button-toggle-password"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
 
             <div className="md:col-span-2 pt-4">

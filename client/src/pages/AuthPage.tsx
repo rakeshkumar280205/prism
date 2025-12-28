@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, ShieldCheck, User, Building2 } from "lucide-react";
+import { MapPin, ShieldCheck, User, Building2, Eye, EyeOff } from "lucide-react";
 
 export default function AuthPage() {
   const { loginUser, loginAdmin, user, admin } = useAuth();
@@ -20,6 +20,8 @@ export default function AuthPage() {
 
   const [userCreds, setUserCreds] = useState({ mobile: "", password: "" });
   const [adminCreds, setAdminCreds] = useState({ adminId: "", password: "" });
+  const [showUserPassword, setShowUserPassword] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,15 +123,28 @@ export default function AuthPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Password</Label>
-                      <Input 
-                        id="password" 
-                        type="password" 
-                        placeholder="••••••••" 
-                        value={userCreds.password}
-                        onChange={(e) => setUserCreds({...userCreds, password: e.target.value})}
-                        required
-                        className="h-11"
-                      />
+                      <div className="relative">
+                        <Input 
+                          id="password" 
+                          type={showUserPassword ? "text" : "password"} 
+                          placeholder="••••••••" 
+                          value={userCreds.password}
+                          onChange={(e) => setUserCreds({...userCreds, password: e.target.value})}
+                          required
+                          className="h-11 pr-10"
+                          data-testid="input-user-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-500 hover:text-slate-700"
+                          onClick={() => setShowUserPassword(!showUserPassword)}
+                          data-testid="button-toggle-user-password"
+                        >
+                          {showUserPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full h-11 text-base" disabled={loginUser.isPending}>
                       {loginUser.isPending ? "Logging in..." : "Login Securely"}
@@ -169,14 +184,27 @@ export default function AuthPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="adminPass">Password</Label>
-                      <Input 
-                        id="adminPass" 
-                        type="password" 
-                        value={adminCreds.password}
-                        onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})}
-                        required
-                        className="h-11"
-                      />
+                      <div className="relative">
+                        <Input 
+                          id="adminPass" 
+                          type={showAdminPassword ? "text" : "password"} 
+                          value={adminCreds.password}
+                          onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})}
+                          required
+                          className="h-11 pr-10"
+                          data-testid="input-admin-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-500 hover:text-slate-700"
+                          onClick={() => setShowAdminPassword(!showAdminPassword)}
+                          data-testid="button-toggle-admin-password"
+                        >
+                          {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full h-11 bg-slate-900 hover:bg-slate-800" disabled={loginAdmin.isPending}>
                       {loginAdmin.isPending ? "Verifying..." : "Access Dashboard"}
