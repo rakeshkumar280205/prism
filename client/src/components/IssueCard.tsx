@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, MapPin, Clock, AlertCircle } from "lucide-react";
+import { ThumbsUp, MapPin, Clock, AlertCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useVoteIssue } from "@/hooks/use-issues";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ interface IssueCardProps {
   issue: IssueWithVoteCount;
   isAdmin?: boolean;
   onStatusChange?: (id: number, status: string) => void;
+  onDelete?: (id: number) => void;
 }
 
 const statusColors = {
@@ -21,9 +22,15 @@ const statusColors = {
   Resolved: "bg-green-100 text-green-700 hover:bg-green-100 border-green-200",
 };
 
-export function IssueCard({ issue, isAdmin, onStatusChange }: IssueCardProps) {
+export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCardProps) {
   const voteMutation = useVoteIssue();
   const { toast } = useToast();
+
+  const handleDelete = () => {
+    if (confirm(`Are you sure you want to delete this issue? This action cannot be undone.`)) {
+      onDelete?.(issue.id);
+    }
+  };
 
   const handleVote = () => {
     if (isAdmin) return;
@@ -106,7 +113,7 @@ export function IssueCard({ issue, isAdmin, onStatusChange }: IssueCardProps) {
           </div>
         </CardContent>
 
-        <CardFooter className="p-4 pt-0 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center mt-auto">
+        <CardFooter className="p-4 pt-0 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center gap-2 mt-auto flex-wrap">
           {!isAdmin ? (
             <Button 
               variant={issue.userHasVoted ? "default" : "outline"} 
@@ -126,15 +133,26 @@ export function IssueCard({ issue, isAdmin, onStatusChange }: IssueCardProps) {
           )}
 
           {isAdmin && onStatusChange && (
-            <select
-              className="text-xs border rounded px-2 py-1 bg-white focus:ring-2 ring-primary/20 outline-none"
-              value={issue.status}
-              onChange={(e) => onStatusChange(issue.id, e.target.value)}
-            >
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-            </select>
+            <div className="flex gap-2 items-center ml-auto">
+              <select
+                className="text-xs border rounded px-2 py-1 bg-white focus:ring-2 ring-primary/20 outline-none"
+                value={issue.status}
+                onChange={(e) => onStatusChange(issue.id, e.target.value)}
+                data-testid={`select-status-${issue.id}`}
+              >
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                data-testid={`button-delete-issue-${issue.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </CardFooter>
       </Card>

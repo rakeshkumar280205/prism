@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useIssues, useUpdateIssueStatus } from "@/hooks/use-issues";
+import { useIssues, useUpdateIssueStatus, useDeleteIssue } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const updateStatus = useUpdateIssueStatus();
+  const deleteIssue = useDeleteIssue();
   const { toast } = useToast();
   useSocket(); // Real-time updates
 
@@ -23,6 +24,15 @@ export default function AdminDashboard() {
       toast({ title: "Status Updated", description: `Issue marked as ${status}` });
     } catch (err) {
       toast({ title: "Update Failed", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteIssue = async (id: number) => {
+    try {
+      await deleteIssue.mutateAsync(id);
+      toast({ title: "Issue Deleted", description: "The issue has been successfully removed." });
+    } catch (err) {
+      toast({ title: "Delete Failed", variant: "destructive" });
     }
   };
 
@@ -112,7 +122,8 @@ export default function AdminDashboard() {
               key={issue.id} 
               issue={issue} 
               isAdmin 
-              onStatusChange={handleStatusChange} 
+              onStatusChange={handleStatusChange}
+              onDelete={handleDeleteIssue}
             />
           ))
         )}
