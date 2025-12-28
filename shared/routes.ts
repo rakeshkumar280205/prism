@@ -100,6 +100,23 @@ export const api = {
       responses: {
         200: z.array(z.custom<typeof admins.$inferSelect>()),
       },
+    },
+    update: { // Super Admin only
+      method: 'PUT' as const,
+      path: '/api/admins/:id',
+      input: insertAdminSchema.partial(),
+      responses: {
+        200: z.custom<typeof admins.$inferSelect>(),
+        403: errorSchemas.unauthorized,
+      },
+    },
+    delete: { // Super Admin only
+      method: 'DELETE' as const,
+      path: '/api/admins/:id',
+      responses: {
+        200: z.object({ message: z.string() }),
+        403: errorSchemas.unauthorized,
+      },
     }
   },
   issues: {

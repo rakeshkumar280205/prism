@@ -14,6 +14,8 @@ export interface IStorage {
   getAdminByAdminId(adminId: string): Promise<Admin | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
   listAdmins(): Promise<Admin[]>;
+  updateAdmin(id: number, updates: Partial<InsertAdmin>): Promise<Admin>;
+  deleteAdmin(id: number): Promise<void>;
 
   // Issues
   getIssue(id: number): Promise<Issue | undefined>;
@@ -68,6 +70,15 @@ export class DatabaseStorage implements IStorage {
 
   async listAdmins(): Promise<Admin[]> {
     return await db.select().from(admins).orderBy(desc(admins.createdAt));
+  }
+
+  async updateAdmin(id: number, updates: Partial<InsertAdmin>): Promise<Admin> {
+    const [admin] = await db.update(admins).set(updates).where(eq(admins.id, id)).returning();
+    return admin;
+  }
+
+  async deleteAdmin(id: number): Promise<void> {
+    await db.delete(admins).where(eq(admins.id, id));
   }
 
   // Issues

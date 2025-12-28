@@ -213,6 +213,40 @@ export async function registerRoutes(
     res.json(admins);
   });
 
+  app.put(api.admins.update.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
+    try {
+      const adminId = Number(req.params.id);
+      const input = api.admins.update.input.parse(req.body);
+      
+      // Hash password if provided
+      if (input.password) {
+        input.password = await bcrypt.hash(input.password, 10);
+      }
+      
+      const admin = await storage.updateAdmin(adminId, input);
+      res.json(admin);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Update failed" });
+    }
+  });
+
+  app.delete(api.admins.delete.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
+    try {
+      const adminId = Number(req.params.id);
+      const admin = await storage.getAdmin(adminId);
+      if (!admin) return res.status(404).json({ message: "Admin not found" });
+      if (admin.role === "SUPER_ADMIN") return res.status(403).json({ message: "Cannot delete Super Admin" });
+      
+      await storage.deleteAdmin(adminId);
+      res.json({ message: "Admin deleted" });
+    } catch (err) {
+      res.status(500).json({ message: "Deletion failed" });
+    }
+  });
+
   // === Issue Routes ===
 
   app.get(api.issues.list.path, async (req, res) => {

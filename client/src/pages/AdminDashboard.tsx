@@ -43,11 +43,6 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-display font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-500">Manage reported issues and update status</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <BarChart3 className="h-4 w-4" /> Download Report
-          </Button>
-        </div>
       </div>
 
       {/* Stats Cards */}
