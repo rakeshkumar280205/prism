@@ -21,8 +21,10 @@ export default function ProfilePage() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   useEffect(() => {
+    setIsMounted(true);
     if (!user) {
       setLocation("/");
       return;
@@ -33,22 +35,42 @@ export default function ProfilePage() {
       address: user.address || "",
       ward: user.ward || "",
     });
+    setIsEditing(false);
   }, [user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isMounted) return;
     try {
       await (updateProfile as any).mutateAsync(formData);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
       });
-      setIsEditing(false);
+      if (isMounted) {
+        setIsEditing(false);
+      }
     } catch (err: any) {
       toast({
         title: "Update Failed",
         description: err.message || "Failed to update profile",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        address: user.address || "",
+        ward: user.ward || "",
       });
     }
   };
@@ -86,8 +108,8 @@ export default function ProfilePage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50 text-slate-600"}
+                  readOnly={!isEditing}
+                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
                   data-testid="input-name"
                 />
               </div>
@@ -100,8 +122,8 @@ export default function ProfilePage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50 text-slate-600"}
+                  readOnly={!isEditing}
+                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
                   data-testid="input-email"
                 />
               </div>
@@ -114,8 +136,8 @@ export default function ProfilePage() {
                   type="text"
                   value={formData.ward}
                   onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50 text-slate-600"}
+                  readOnly={!isEditing}
+                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
                   placeholder="e.g., Ward 5"
                   data-testid="input-ward"
                 />
@@ -129,11 +151,11 @@ export default function ProfilePage() {
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                disabled={!isEditing}
+                readOnly={!isEditing}
                 className={`w-full px-3 py-2 border rounded-md text-sm resize-none h-24 ${
                   isEditing
-                    ? "border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-                    : "bg-slate-50 text-slate-600 border-slate-200"
+                    ? "border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary cursor-text"
+                    : "bg-slate-50 text-slate-600 border-slate-200 cursor-not-allowed"
                 }`}
                 placeholder="Your street address"
                 data-testid="textarea-address"
@@ -145,7 +167,7 @@ export default function ProfilePage() {
               {!isEditing ? (
                 <Button
                   type="button"
-                  onClick={() => setIsEditing(true)}
+                  onClick={handleEdit}
                   className="gap-2"
                   data-testid="button-edit-profile"
                 >
@@ -165,15 +187,7 @@ export default function ProfilePage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setFormData({
-                        name: user.name || "",
-                        email: user.email || "",
-                        address: user.address || "",
-                        ward: user.ward || "",
-                      });
-                    }}
+                    onClick={handleCancel}
                     data-testid="button-cancel-edit"
                   >
                     Cancel
