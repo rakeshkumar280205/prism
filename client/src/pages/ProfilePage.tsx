@@ -21,10 +21,8 @@ export default function ProfilePage() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [isMounted, setIsMounted] = useState(true);
 
   useEffect(() => {
-    setIsMounted(true);
     if (!user) {
       setLocation("/");
       return;
@@ -40,16 +38,15 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isMounted) return;
+    if (!isEditing) return;
+    
     try {
       await (updateProfile as any).mutateAsync(formData);
       toast({
         title: "Profile Updated",
         description: "Your profile has been successfully updated.",
       });
-      if (isMounted) {
-        setIsEditing(false);
-      }
+      setIsEditing(false);
     } catch (err: any) {
       toast({
         title: "Update Failed",
@@ -59,11 +56,15 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsEditing(true);
   };
 
-  const handleCancel = () => {
+  const handleCancel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsEditing(false);
     if (user) {
       setFormData({
@@ -85,117 +86,155 @@ export default function ProfilePage() {
           <CardDescription>Manage your personal information</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Mobile - Read Only */}
-              <div>
-                <Label htmlFor="mobile" className="text-slate-600">Mobile Number</Label>
-                <Input
-                  id="mobile"
-                  type="text"
-                  value={user.mobile}
-                  disabled
-                  className="bg-slate-50 text-slate-500"
-                />
-                <p className="text-xs text-slate-400 mt-1">Cannot be changed</p>
+          {!isEditing ? (
+            // VIEW MODE
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Mobile - Read Only */}
+                <div>
+                  <Label className="text-slate-600">Mobile Number</Label>
+                  <div className="px-3 py-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
+                    {user.mobile}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Cannot be changed</p>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <Label className="text-slate-700">Full Name</Label>
+                  <div className="px-3 py-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
+                    {formData.name || "Not provided"}
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <Label className="text-slate-700">Email Address</Label>
+                  <div className="px-3 py-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
+                    {formData.email || "Not provided"}
+                  </div>
+                </div>
+
+                {/* Ward */}
+                <div>
+                  <Label className="text-slate-700">Ward</Label>
+                  <div className="px-3 py-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
+                    {formData.ward || "Not provided"}
+                  </div>
+                </div>
               </div>
 
-              {/* Name */}
+              {/* Address */}
               <div>
-                <Label htmlFor="name" className="text-slate-700">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => isEditing && setFormData({ ...formData, name: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50"}
-                  data-testid="input-name"
-                />
+                <Label className="text-slate-700">Address</Label>
+                <div className="px-3 py-2 bg-slate-50 rounded border border-slate-200 text-slate-700 min-h-24 whitespace-pre-wrap">
+                  {formData.address || "Not provided"}
+                </div>
               </div>
 
-              {/* Email */}
-              <div>
-                <Label htmlFor="email" className="text-slate-700">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => isEditing && setFormData({ ...formData, email: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50"}
-                  data-testid="input-email"
-                />
-              </div>
-
-              {/* Ward */}
-              <div>
-                <Label htmlFor="ward" className="text-slate-700">Ward</Label>
-                <Input
-                  id="ward"
-                  type="text"
-                  value={formData.ward}
-                  onChange={(e) => isEditing && setFormData({ ...formData, ward: e.target.value })}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "bg-slate-50"}
-                  placeholder="e.g., Ward 5"
-                  data-testid="input-ward"
-                />
-              </div>
+              {/* Edit Button */}
+              <Button
+                onClick={handleEdit}
+                className="gap-2"
+                data-testid="button-edit-profile"
+              >
+                Edit Profile
+              </Button>
             </div>
+          ) : (
+            // EDIT MODE
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Mobile - Read Only */}
+                <div>
+                  <Label htmlFor="mobile" className="text-slate-600">Mobile Number</Label>
+                  <Input
+                    id="mobile"
+                    type="text"
+                    value={user.mobile}
+                    disabled
+                    className="bg-slate-50 text-slate-500"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Cannot be changed</p>
+                </div>
 
-            {/* Address - Full Width */}
-            <div>
-              <Label htmlFor="address" className="text-slate-700">Address</Label>
-              <textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) => isEditing && setFormData({ ...formData, address: e.target.value })}
-                disabled={!isEditing}
-                className={`w-full px-3 py-2 border rounded-md text-sm resize-none h-24 ${
-                  isEditing
-                    ? "border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-                    : "bg-slate-50"
-                }`}
-                placeholder="Your street address"
-                data-testid="textarea-address"
-              />
-            </div>
+                {/* Name */}
+                <div>
+                  <Label htmlFor="name" className="text-slate-700">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className=""
+                    data-testid="input-name"
+                    autoFocus
+                  />
+                </div>
 
-            {/* Actions */}
-            <div className="flex gap-3">
-              {!isEditing ? (
+                {/* Email */}
+                <div>
+                  <Label htmlFor="email" className="text-slate-700">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className=""
+                    data-testid="input-email"
+                  />
+                </div>
+
+                {/* Ward */}
+                <div>
+                  <Label htmlFor="ward" className="text-slate-700">Ward</Label>
+                  <Input
+                    id="ward"
+                    type="text"
+                    value={formData.ward}
+                    onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
+                    className=""
+                    placeholder="e.g., Ward 5"
+                    data-testid="input-ward"
+                  />
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <Label htmlFor="address" className="text-slate-700">Address</Label>
+                <textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Your street address"
+                  data-testid="textarea-address"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={(updateProfile as any).isPending}
+                  className="gap-2"
+                  data-testid="button-save-profile"
+                >
+                  {(updateProfile as any).isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
                 <Button
                   type="button"
-                  onClick={handleEdit}
-                  className="gap-2"
-                  data-testid="button-edit-profile"
+                  variant="outline"
+                  onClick={handleCancel}
+                  data-testid="button-cancel-edit"
                 >
-                  Edit Profile
+                  Cancel
                 </Button>
-              ) : (
-                <>
-                  <Button
-                    type="submit"
-                    disabled={(updateProfile as any).isPending}
-                    className="gap-2"
-                    data-testid="button-save-profile"
-                  >
-                    {(updateProfile as any).isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Save Changes
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    data-testid="button-cancel-edit"
-                  >
-                    Cancel
-                  </Button>
-                </>
-              )}
-            </div>
-          </form>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
