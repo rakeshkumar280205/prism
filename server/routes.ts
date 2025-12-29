@@ -250,9 +250,15 @@ export async function registerRoutes(
   // === Issue Routes ===
 
   app.get(api.issues.list.path, async (req, res) => {
-    const filters = req.query as { ward?: string; status?: string; category?: string };
+    const filters = req.query as { ward?: string; status?: string; category?: string; createdBy?: string };
     const userId = req.isAuthenticated() && (req.user as any).type === 'user' ? (req.user as any).id : undefined;
-    const issues = await (storage as any).getIssues(filters, userId); // Access extended method
+    const parsedFilters = {
+      ward: filters.ward,
+      status: filters.status,
+      category: filters.category,
+      createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
+    };
+    const issues = await (storage as any).getIssues(parsedFilters, userId); // Access extended method
     res.json(issues);
   });
 

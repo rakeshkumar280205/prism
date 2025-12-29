@@ -11,6 +11,7 @@ import RegisterPage from "@/pages/RegisterPage";
 import Home from "@/pages/Home";
 import ReportIssue from "@/pages/ReportIssue";
 import ProfilePage from "@/pages/ProfilePage";
+import MyIssuesPage from "@/pages/MyIssuesPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import SuperAdminDashboard from "@/pages/SuperAdminDashboard";
 import NotFound from "@/pages/not-found";
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/register" component={RegisterPage} />
         <Route path="/home" component={Home} />
         <Route path="/report" component={ReportIssue} />
+        <Route path="/my-issues" component={MyIssuesPage} />
         <Route path="/profile" component={ProfilePage} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
         <Route path="/super-admin/dashboard" component={SuperAdminDashboard} />

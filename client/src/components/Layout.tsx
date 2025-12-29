@@ -10,7 +10,8 @@ import {
   User, 
   ShieldCheck, 
   MapPin, 
-  AlertTriangle 
+  AlertTriangle,
+  ClipboardList
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = user ? [
     { label: "Home", href: "/home", icon: Home },
     { label: "Report Issue", href: "/report", icon: PlusCircle },
+    { label: "My Issues", href: "/my-issues", icon: ClipboardList },
     { label: "Profile", href: "/profile", icon: User },
   ] : admin ? [
     { label: "Dashboard", href: "/admin/dashboard", icon: ShieldCheck },

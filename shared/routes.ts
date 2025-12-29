@@ -127,6 +127,7 @@ export const api = {
         ward: z.string().optional(),
         status: z.string().optional(),
         category: z.string().optional(),
+        createdBy: z.string().optional(),
       }).optional(),
       responses: {
         200: z.array(z.custom<typeof issues.$inferSelect & { voteCount: number; userHasVoted: boolean }>()),
