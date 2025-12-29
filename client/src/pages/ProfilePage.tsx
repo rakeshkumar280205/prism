@@ -107,9 +107,9 @@ export default function ProfilePage() {
                   id="name"
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  readOnly={!isEditing}
-                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
+                  onChange={(e) => isEditing && setFormData({ ...formData, name: e.target.value })}
+                  disabled={!isEditing}
+                  className={isEditing ? "" : "bg-slate-50"}
                   data-testid="input-name"
                 />
               </div>
@@ -121,9 +121,9 @@ export default function ProfilePage() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  readOnly={!isEditing}
-                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
+                  onChange={(e) => isEditing && setFormData({ ...formData, email: e.target.value })}
+                  disabled={!isEditing}
+                  className={isEditing ? "" : "bg-slate-50"}
                   data-testid="input-email"
                 />
               </div>
@@ -135,9 +135,9 @@ export default function ProfilePage() {
                   id="ward"
                   type="text"
                   value={formData.ward}
-                  onChange={(e) => setFormData({ ...formData, ward: e.target.value })}
-                  readOnly={!isEditing}
-                  className={isEditing ? "cursor-text" : "bg-slate-50 text-slate-600 cursor-not-allowed"}
+                  onChange={(e) => isEditing && setFormData({ ...formData, ward: e.target.value })}
+                  disabled={!isEditing}
+                  className={isEditing ? "" : "bg-slate-50"}
                   placeholder="e.g., Ward 5"
                   data-testid="input-ward"
                 />
@@ -150,12 +150,12 @@ export default function ProfilePage() {
               <textarea
                 id="address"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                readOnly={!isEditing}
+                onChange={(e) => isEditing && setFormData({ ...formData, address: e.target.value })}
+                disabled={!isEditing}
                 className={`w-full px-3 py-2 border rounded-md text-sm resize-none h-24 ${
                   isEditing
-                    ? "border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary cursor-text"
-                    : "bg-slate-50 text-slate-600 border-slate-200 cursor-not-allowed"
+                    ? "border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                    : "bg-slate-50"
                 }`}
                 placeholder="Your street address"
                 data-testid="textarea-address"
