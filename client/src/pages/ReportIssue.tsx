@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Image as ImageIcon, MapPin } from "lucide-react";
 import { ImageModal } from "@/components/ImageModal";
@@ -119,20 +118,24 @@ export default function ReportIssue() {
 
               <div className="space-y-2">
                 <Label htmlFor="ward">Ward Number <span className="text-red-500">*</span></Label>
-                <Select 
-                  value={formData.ward} 
-                  onValueChange={(v) => setFormData({...formData, ward: v})}
-                  required
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select Ward" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
-                      <SelectItem key={n} value={String(n)}>Ward {n}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input 
+                  id="ward" 
+                  required 
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={formData.ward}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const num = value ? parseInt(value) : "";
+                    if (num === "" || (num >= 1 && num <= 200)) {
+                      setFormData({...formData, ward: String(num === "" ? "" : num)});
+                    }
+                  }}
+                  placeholder="Enter ward number (1-200)"
+                  className="h-11"
+                  data-testid="input-ward"
+                />
               </div>
             </div>
 

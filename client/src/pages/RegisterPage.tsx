@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 
@@ -100,19 +99,24 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="ward">Ward Number <span className="text-red-500">*</span></Label>
-              <Select 
-                onValueChange={(val) => setFormData({...formData, ward: val})}
+              <Input 
+                id="ward" 
+                required 
+                type="number"
+                min="1"
+                max="200"
                 value={formData.ward}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
-                    <SelectItem key={n} value={String(n)}>Ward {n}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const num = value ? parseInt(value) : "";
+                  if (num === "" || (num >= 1 && num <= 200)) {
+                    setFormData({...formData, ward: String(num === "" ? "" : num)});
+                  }
+                }}
+                placeholder="Enter ward number (1-200)"
+                data-testid="input-ward"
+              />
+              <p className="text-xs text-slate-500">Enter a number between 1 and 200</p>
             </div>
 
             <div className="space-y-2 md:col-span-2">
