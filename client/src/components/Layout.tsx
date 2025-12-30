@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, admin, logout } = useAuth();
@@ -39,7 +40,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     logout.mutate();
   };
 
-  if (!user && !admin) return <>{children}</>;
+  if (!user && !admin) {
+    // For auth pages, still show theme toggle
+    return (
+      <div className="min-h-screen flex flex-col dark:bg-slate-950">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -58,7 +66,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-4">
             {navItems.map((item) => (
               <Link 
                 key={item.href} 
@@ -71,10 +79,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             <div className="h-6 w-px bg-slate-200 mx-2" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="text-sm text-slate-600 font-medium hidden lg:block">
                 Hi, {user?.name || admin?.name}
               </span>
+              <ThemeToggle />
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -87,13 +96,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
 
-          {/* Mobile Menu */}
-          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
+          {/* Mobile Controls */}
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
             <SheetContent side="left" className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col gap-6 mt-8">
                 <div className="flex items-center gap-2 px-2">
@@ -139,7 +150,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </SheetContent>
-          </Sheet>
+            </Sheet>
+          </div>
         </div>
       </header>
 
