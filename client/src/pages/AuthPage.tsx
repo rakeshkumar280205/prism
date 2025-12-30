@@ -116,9 +116,15 @@ export default function AuthPage() {
                         id="mobile" 
                         placeholder="e.g. 9876543210" 
                         value={userCreds.mobile}
-                        onChange={(e) => setUserCreds({...userCreds, mobile: e.target.value})}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setUserCreds({...userCreds, mobile: value});
+                        }}
+                        maxLength={10}
+                        inputMode="numeric"
                         required
                         className="h-11"
+                        data-testid="input-mobile"
                       />
                     </div>
                     <div className="space-y-2">
