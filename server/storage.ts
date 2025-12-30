@@ -159,6 +159,73 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(votes).where(and(eq(votes.issueId, issueId), eq(votes.userId, userId)));
     return result.length > 0;
   }
+
+  // Analytics
+  async getAnalytics(userId?: number, adminWard?: string, isSuperAdmin?: boolean) {
+    let query = db.select().from(issues);
+    const conditions = [];
+
+    // Filter based on role
+    if (userId && !isSuperAdmin && !adminWard) {
+      // User: only their own issues
+      conditions.push(eq(issues.createdBy, userId));
+    } else if (adminWard && !isSuperAdmin) {
+      // Admin: only their assigned ward
+      conditions.push(eq(issues.ward, adminWard));
+    }
+    // SuperAdmin: all issues (no filter)
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const allIssues = await query;
+
+    // Calculate statistics
+    const totalIssues = allIssues.length;
+    const pendingCount = allIssues.filter(i => i.status === "Pending").length;
+    const inProgressCount = allIssues.filter(i => i.status === "In Progress").length;
+    const resolvedCount = allIssues.filter(i => i.status === "Resolved").length;
+
+    // Category distribution
+    const categoryDist: Record<string, number> = {};
+    allIssues.forEach(issue => {
+      categoryDist[issue.category] = (categoryDist[issue.category] || 0) + 1;
+    });
+
+    // Ward-wise distribution
+    const wardDist: Record<string, number> = {};
+    allIssues.forEach(issue => {
+      wardDist[issue.ward] = (wardDist[issue.ward] || 0) + 1;
+    });
+
+    // Monthly trend (last 12 months)
+    const monthlyTrend: Record<string, number> = {};
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      monthlyTrend[monthKey] = 0;
+    }
+
+    allIssues.forEach(issue => {
+      const issueDate = new Date(issue.createdAt);
+      const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      if (monthlyTrend.hasOwnProperty(monthKey)) {
+        monthlyTrend[monthKey]++;
+      }
+    });
+
+    return {
+      totalIssues,
+      pendingCount,
+      inProgressCount,
+      resolvedCount,
+      categoryDistribution: Object.entries(categoryDist).map(([name, value]) => ({ name, value })),
+      wardDistribution: Object.entries(wardDist).map(([name, value]) => ({ name, value })),
+      monthlyTrend: Object.entries(monthlyTrend).map(([month, count]) => ({ month, count })),
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

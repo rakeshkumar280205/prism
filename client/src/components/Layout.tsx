@@ -11,7 +11,8 @@ import {
   ShieldCheck, 
   MapPin, 
   AlertTriangle,
-  ClipboardList
+  ClipboardList,
+  BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,9 +27,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { label: "Home", href: "/home", icon: Home },
     { label: "Report Issue", href: "/report", icon: PlusCircle },
     { label: "My Issues", href: "/my-issues", icon: ClipboardList },
+    { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Profile", href: "/profile", icon: User },
   ] : admin ? [
     { label: "Dashboard", href: "/admin/dashboard", icon: ShieldCheck },
+    { label: "Analytics", href: "/analytics", icon: BarChart3 },
     ...(admin.role === 'SUPER_ADMIN' ? [{ label: "Admins", href: "/super-admin/dashboard", icon: User }] : [])
   ] : [];
 

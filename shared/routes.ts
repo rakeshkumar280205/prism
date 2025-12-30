@@ -166,6 +166,21 @@ export const api = {
         200: z.object({ votes: z.number(), voted: z.boolean() }),
         401: errorSchemas.unauthorized,
       },
+    },
+    analytics: {
+      method: 'GET' as const,
+      path: '/api/analytics',
+      responses: {
+        200: z.object({
+          totalIssues: z.number(),
+          pendingCount: z.number(),
+          inProgressCount: z.number(),
+          resolvedCount: z.number(),
+          categoryDistribution: z.array(z.object({ name: z.string(), value: z.number() })),
+          wardDistribution: z.array(z.object({ name: z.string(), value: z.number() })),
+          monthlyTrend: z.array(z.object({ month: z.string(), count: z.number() })),
+        }),
+      },
     }
   },
 };

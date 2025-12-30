@@ -315,6 +315,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get(api.issues.analytics.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const user = (req.user as any);
+      let analytics;
+      
+      if (user.type === "user") {
+        // User sees only their issues
+        analytics = await (storage as any).getAnalytics(user.id, undefined, false);
+      } else if (user.type === "admin") {
+        // Admin sees their ward
+        if (user.role === "SUPER_ADMIN") {
+          // Super Admin sees all
+          analytics = await (storage as any).getAnalytics(undefined, undefined, true);
+        } else {
+          // Regular admin sees their ward
+          analytics = await (storage as any).getAnalytics(undefined, user.wardAssigned, false);
+        }
+      }
+      
+      res.json(analytics);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // Seed Super Admin if not exists
   const superAdmin = await storage.getAdminByAdminId("superadmin");
   if (!superAdmin) {
