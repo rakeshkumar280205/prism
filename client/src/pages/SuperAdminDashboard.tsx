@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Shield, AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Shield, AlertCircle, Loader2, Pencil, Trash2, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function SuperAdminDashboard() {
@@ -20,6 +20,7 @@ export default function SuperAdminDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     adminId: "",
@@ -111,6 +112,15 @@ export default function SuperAdminDashboard() {
     });
     setIsEditOpen(true);
   };
+
+  const filteredAdmins = admins.filter((adm: any) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      adm.adminId.toLowerCase().includes(query) ||
+      adm.name.toLowerCase().includes(query) ||
+      (adm.wardAssigned && adm.wardAssigned.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div className="space-y-8">
@@ -280,8 +290,31 @@ export default function SuperAdminDashboard() {
       {/* Admins Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Admin List</CardTitle>
-          <CardDescription>All administrators and their ward assignments</CardDescription>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle>Admin List</CardTitle>
+              <CardDescription>All administrators and their ward assignments</CardDescription>
+            </div>
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by ID, name, or ward..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+                data-testid="input-search-admin"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  data-testid="button-clear-search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -293,6 +326,11 @@ export default function SuperAdminDashboard() {
             <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed">
               <AlertCircle className="h-8 w-8 text-slate-400 mx-auto mb-2" />
               <p className="text-slate-500">No admins created yet. Create one to get started.</p>
+            </div>
+          ) : filteredAdmins.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed">
+              <AlertCircle className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-slate-500">No admins found matching "{searchQuery}"</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -308,7 +346,7 @@ export default function SuperAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {admins.map((admin: any) => (
+                  {filteredAdmins.map((admin: any) => (
                     <TableRow key={admin.id} data-testid={`row-admin-${admin.id}`}>
                       <TableCell className="font-medium">{admin.adminId}</TableCell>
                       <TableCell>{admin.name}</TableCell>
