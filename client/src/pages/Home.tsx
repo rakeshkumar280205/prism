@@ -109,9 +109,31 @@ export default function Home() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="icon" onClick={() => refetch()} className="bg-slate-50 shrink-0">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => refetch()} 
+              className="bg-slate-50 shrink-0"
+              data-testid="button-refresh-issues"
+            >
               <RefreshCw className="h-4 w-4" />
             </Button>
+
+            {(search || filters.ward !== "all" || filters.category !== "all" || filters.status !== "all") && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setFilters({ ward: 'all', category: 'all', status: 'all' });
+                  setSearch('');
+                  refetch();
+                }}
+                className="bg-slate-50 shrink-0 text-xs"
+                data-testid="button-clear-all-filters"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         </div>
       </div>
