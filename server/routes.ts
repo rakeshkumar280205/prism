@@ -297,11 +297,50 @@ export async function registerRoutes(
     }
   });
 
+  app.patch(api.issues.update.path, upload.single("image"), async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const issueId = Number(req.params.id);
+      const issue = await storage.getIssue(issueId);
+      if (!issue) return res.status(404).json({ message: "Issue not found" });
+      if (issue.createdBy !== (req.user as any).id) return res.status(403).json({ message: "Can only edit your own issues" });
+
+      const updates: any = {};
+      if (req.body.title) updates.title = req.body.title;
+      if (req.body.description) updates.description = req.body.description;
+      if (req.body.category) updates.category = req.body.category;
+      if (req.body.ward) updates.ward = req.body.ward;
+      if (req.body.address) updates.address = req.body.address;
+      if (req.file) updates.image = req.file.filename;
+
+      const updated = await (storage as any).updateIssue(issueId, updates);
+      io.emit("issue:update", updated); // Real-time
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Update failed" });
+    }
+  });
+
   app.delete(api.issues.delete.path, async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).type !== "admin") return res.status(403).json({ message: "Forbidden" });
-    await storage.deleteIssue(Number(req.params.id));
-    io.emit("issue:delete", { id: Number(req.params.id) });
-    res.status(204).end();
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const issueId = Number(req.params.id);
+      const issue = await storage.getIssue(issueId);
+      if (!issue) return res.status(404).json({ message: "Issue not found" });
+      
+      const user = (req.user as any);
+      const isOwner = user.type === "user" && issue.createdBy === user.id;
+      const isAdmin = user.type === "admin";
+      
+      if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
+      
+      await storage.deleteIssue(issueId);
+      io.emit("issue:delete", { id: issueId });
+      res.status(204).end();
+    } catch (err) {
+      res.status(500).json({ message: "Deletion failed" });
+    }
   });
 
   app.post(api.issues.vote.path, async (req, res) => {

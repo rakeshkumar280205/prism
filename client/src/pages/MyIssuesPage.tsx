@@ -3,16 +3,25 @@ import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useIssues } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
-import { Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Edit2, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { EditIssueDialog } from "@/components/EditIssueDialog";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 
 export default function MyIssuesPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [editingIssue, setEditingIssue] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
   useSocket(); // Real-time updates
 
   if (!user) {
@@ -21,7 +30,7 @@ export default function MyIssuesPage() {
   }
 
   // Fetch only this user's issues
-  const { data: issues, isLoading } = useIssues(
+  const { data: issues, isLoading, refetch } = useIssues(
     statusFilter !== "all" 
       ? { createdBy: user.id.toString(), status: statusFilter }
       : { createdBy: user.id.toString() }
@@ -31,6 +40,41 @@ export default function MyIssuesPage() {
     issue.title.toLowerCase().includes(search.toLowerCase()) ||
     issue.description.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleEdit = (issue: any) => {
+    setEditingIssue(issue);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (formData: FormData) => {
+    setIsSaving(true);
+    try {
+      await apiRequest(`/api/issues/${editingIssue.id}`, {
+        method: "PATCH",
+        body: formData,
+      });
+      toast({ title: "Success", description: "Issue updated successfully" });
+      setIsEditDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (issueId: number) => {
+    if (!confirm("Are you sure you want to delete this issue? This action cannot be undone.")) return;
+    
+    try {
+      await apiRequest(`/api/issues/${issueId}`, { method: "DELETE" });
+      toast({ title: "Success", description: "Issue deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/issues"] });
+      refetch();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -74,14 +118,48 @@ export default function MyIssuesPage() {
           </p>
         ) : (
           filteredIssues?.map((issue) => (
-            <IssueCard 
-              key={issue.id} 
-              issue={issue}
-              data-testid={`card-issue-${issue.id}`}
-            />
+            <div key={issue.id} className="relative group">
+              <IssueCard 
+                issue={issue}
+                data-testid={`card-issue-${issue.id}`}
+              />
+              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button 
+                  size="icon" 
+                  variant="outline"
+                  className="bg-white shadow-md"
+                  onClick={() => handleEdit(issue)}
+                  data-testid={`button-edit-issue-${issue.id}`}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button 
+                  size="icon" 
+                  variant="destructive"
+                  className="shadow-md"
+                  onClick={() => handleDelete(issue.id)}
+                  data-testid={`button-delete-issue-${issue.id}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           ))
         )}
       </div>
+
+      {editingIssue && (
+        <EditIssueDialog 
+          issue={editingIssue}
+          isOpen={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingIssue(null);
+          }}
+          onSave={handleSaveEdit}
+          isSaving={isSaving}
+        />
+      )}
     </div>
   );
 }

@@ -128,6 +128,11 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
+  async updateIssue(id: number, updates: Partial<Omit<InsertIssue, 'createdBy'>>): Promise<Issue> {
+    const [issue] = await db.update(issues).set({ ...updates, updatedAt: new Date() }).where(eq(issues.id, id)).returning();
+    return issue;
+  }
+
   async deleteIssue(id: number): Promise<void> {
     await db.delete(votes).where(eq(votes.issueId, id)); // Cascade delete votes
     await db.delete(issues).where(eq(issues.id, id));

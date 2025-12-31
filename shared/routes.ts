@@ -151,7 +151,16 @@ export const api = {
         403: errorSchemas.unauthorized,
       },
     },
-    delete: { // Admin only
+    update: { // User can update their own issues
+      method: 'PATCH' as const,
+      path: '/api/issues/:id',
+      input: z.any(), // Multipart form data
+      responses: {
+        200: z.custom<typeof issues.$inferSelect>(),
+        403: errorSchemas.unauthorized,
+      },
+    },
+    delete: { // Admin or user who created it
       method: 'DELETE' as const,
       path: '/api/issues/:id',
       responses: {
