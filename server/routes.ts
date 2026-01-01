@@ -257,6 +257,7 @@ export async function registerRoutes(
     const parsedFilters: any = {
       status: filters.status,
       category: filters.category,
+      search: req.query.search as string,
       createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
     };
 
@@ -292,7 +293,10 @@ export async function registerRoutes(
         image: req.file ? req.file.filename : undefined,
       };
       
-      const issue = await storage.createIssue({ ...issueData, createdBy: (req.user as any).id });
+      const issue = await storage.createIssue({ 
+        ...issueData, 
+        createdBy: user.id 
+      });
       io.emit("issue:new", issue); // Real-time
       res.status(201).json(issue);
     } catch (err) {

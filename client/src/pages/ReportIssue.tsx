@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useCreateIssue } from "@/hooks/use-issues";
+import { useState, useRef, useEffect } from "react";
+import { useCreateIssue, useIssues } from "@/hooks/use-issues";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Image as ImageIcon, MapPin } from "lucide-react";
+import { Upload, X, Image as ImageIcon, MapPin, AlertCircle } from "lucide-react";
 import { ImageModal } from "@/components/ImageModal";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ReportIssue() {
   const createIssue = useCreateIssue();
@@ -26,6 +27,19 @@ export default function ReportIssue() {
   });
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [debouncedTitle, setDebouncedTitle] = useState("");
+
+  // Similar issues detection
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedTitle(formData.title);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.title]);
+
+  const { data: similarIssues } = useIssues(
+    debouncedTitle.length > 3 ? { search: debouncedTitle } : undefined
+  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,6 +106,24 @@ export default function ReportIssue() {
                 required
                 className="h-12"
               />
+              
+              {similarIssues && similarIssues.length > 0 && (
+                <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900 mt-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-800 font-bold">Similar Issues Found</AlertTitle>
+                  <AlertDescription className="text-amber-700">
+                    Someone might have already reported this. Check these issues first:
+                    <ul className="mt-2 space-y-1 list-disc list-inside">
+                      {similarIssues.slice(0, 3).map(issue => (
+                        <li key={issue.id} className="text-sm">
+                          <span className="font-medium">{issue.title}</span> (Ward {issue.ward})
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 text-xs italic">If your issue is different, you can still submit.</p>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             {/* Category & Ward */}

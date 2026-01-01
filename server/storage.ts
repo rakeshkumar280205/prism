@@ -87,7 +87,7 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
-  async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
+  async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number; search?: string } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
     let query = db.select().from(issues);
     const conditions = [];
 
@@ -95,6 +95,9 @@ export class DatabaseStorage implements IStorage {
     if (filters.status) conditions.push(eq(issues.status, filters.status));
     if (filters.category) conditions.push(eq(issues.category, filters.category));
     if (filters.createdBy) conditions.push(eq(issues.createdBy, filters.createdBy));
+    if (filters.search) {
+      conditions.push(sql`${issues.title} ILIKE ${'%' + filters.search + '%'}`);
+    }
 
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
@@ -214,7 +217,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     allIssues.forEach(issue => {
-      const issueDate = new Date(issue.createdAt);
+      const issueDate = new Date(issue.createdAt || "");
+      if (!issueDate || isNaN(issueDate.getTime())) return;
       const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
       if (monthlyTrend.hasOwnProperty(monthKey)) {
         monthlyTrend[monthKey]++;
