@@ -87,11 +87,11 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
-  async getIssues(filters: { ward?: string; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
+  async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
     let query = db.select().from(issues);
     const conditions = [];
 
-    if (filters.ward) conditions.push(eq(issues.ward, filters.ward));
+    if (filters.ward) conditions.push(eq(issues.ward, filters.ward.toString()));
     if (filters.status) conditions.push(eq(issues.status, filters.status));
     if (filters.category) conditions.push(eq(issues.category, filters.category));
     if (filters.createdBy) conditions.push(eq(issues.createdBy, filters.createdBy));

@@ -251,14 +251,30 @@ export async function registerRoutes(
 
   app.get(api.issues.list.path, async (req, res) => {
     const filters = req.query as { ward?: string; status?: string; category?: string; createdBy?: string };
-    const userId = req.isAuthenticated() && (req.user as any).type === 'user' ? (req.user as any).id : undefined;
-    const parsedFilters = {
-      ward: filters.ward,
+    const user = req.user as any;
+    const userId = req.isAuthenticated() && user.type === 'user' ? user.id : undefined;
+    
+    const parsedFilters: any = {
       status: filters.status,
       category: filters.category,
       createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
     };
-    const issues = await (storage as any).getIssues(parsedFilters, userId); // Access extended method
+
+    // Ward restriction logic
+    if (req.isAuthenticated() && user.type === "admin") {
+      if (user.role !== "SUPER_ADMIN") {
+        // Regular admins are restricted to their assigned ward
+        parsedFilters.ward = user.wardAssigned;
+      } else if (filters.ward) {
+        // Super admins can filter by any ward
+        parsedFilters.ward = filters.ward;
+      }
+    } else {
+      // Users/Public can filter by ward if provided
+      parsedFilters.ward = filters.ward;
+    }
+
+    const issues = await (storage as any).getIssues(parsedFilters, userId);
     res.json(issues);
   });
 
@@ -288,10 +304,21 @@ export async function registerRoutes(
   app.patch(api.issues.updateStatus.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "admin") return res.status(403).json({ message: "Forbidden" });
     try {
+      const user = (req.user as any);
+      const issueId = Number(req.params.id);
+      const issue = await storage.getIssue(issueId);
+      
+      if (!issue) return res.status(404).json({ message: "Issue not found" });
+      
+      // Admin ward restriction
+      if (user.role !== "SUPER_ADMIN" && issue.ward !== user.wardAssigned) {
+        return res.status(403).json({ message: "You can only update issues in your assigned ward" });
+      }
+
       const { status } = req.body;
-      const issue = await storage.updateIssueStatus(Number(req.params.id), status);
-      io.emit("issue:update", issue); // Real-time
-      res.json(issue);
+      const updatedIssue = await storage.updateIssueStatus(issueId, status);
+      io.emit("issue:update", updatedIssue); // Real-time
+      res.json(updatedIssue);
     } catch (err) {
       res.status(500).json({ message: "Update failed" });
     }
@@ -335,6 +362,11 @@ export async function registerRoutes(
       
       if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
       
+      // Admin ward restriction
+      if (user.type === "admin" && user.role !== "SUPER_ADMIN" && issue.ward !== user.wardAssigned) {
+        return res.status(403).json({ message: "You can only delete issues in your assigned ward" });
+      }
+      
       await storage.deleteIssue(issueId);
       io.emit("issue:delete", { id: issueId });
       res.status(204).end();
@@ -361,15 +393,12 @@ export async function registerRoutes(
       let analytics;
       
       if (user.type === "user") {
-        // User sees only their issues
         analytics = await (storage as any).getAnalytics(user.id, undefined, false);
       } else if (user.type === "admin") {
-        // Admin sees their ward
         if (user.role === "SUPER_ADMIN") {
-          // Super Admin sees all
           analytics = await (storage as any).getAnalytics(undefined, undefined, true);
         } else {
-          // Regular admin sees their ward
+          // Explicitly use wardAssigned for non-super admins
           analytics = await (storage as any).getAnalytics(undefined, user.wardAssigned, false);
         }
       }
