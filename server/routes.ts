@@ -293,11 +293,11 @@ export async function registerRoutes(
         address: req.body.address,
       };
 
-      // Check for exact duplicate (Smart handling)
+      // Check for exact duplicate (Smart handling: ward, category, title, address)
       const duplicate = await storage.findDuplicateIssue(issueData);
       if (duplicate) {
         return res.status(409).json({ 
-          message: "A similar issue already exists in this ward and category.", 
+          message: "A similar issue already exists in this ward and category with the same title and location.", 
           issueId: duplicate.id 
         });
       }
