@@ -38,7 +38,20 @@ export default function ReportIssue() {
   }, [formData.title]);
 
   const { data: similarIssues } = useIssues(
-    debouncedTitle.length > 3 ? { search: debouncedTitle } : undefined
+    debouncedTitle.length > 3 && formData.ward && formData.category && formData.address
+      ? { 
+          search: debouncedTitle,
+          ward: formData.ward,
+          category: formData.category
+        } 
+      : undefined
+  );
+
+  const exactDuplicate = similarIssues?.find(issue => 
+    issue.title.toLowerCase() === formData.title.toLowerCase() &&
+    issue.ward === formData.ward &&
+    issue.category === formData.category &&
+    issue.address.toLowerCase() === formData.address.toLowerCase()
   );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,8 +121,20 @@ export default function ReportIssue() {
                 className="h-12"
               />
               
-              {similarIssues && similarIssues.length > 0 && (
-                <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900 mt-2">
+              {exactDuplicate && (
+                <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900 mt-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertTitle className="text-red-800 font-bold">Issue Already Reported</AlertTitle>
+                  <AlertDescription className="text-red-700">
+                    This exact issue has already been reported in this ward and category at this location.
+                    <p className="mt-2 font-medium">Original Report: {exactDuplicate.title}</p>
+                    <p className="mt-2 text-xs italic">Please check existing reports to avoid duplicates.</p>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {!exactDuplicate && similarIssues && similarIssues.length > 0 && (
+                <Alert className="bg-amber-50 border-amber-200 text-amber-900 mt-2">
                   <AlertCircle className="h-4 w-4 text-amber-600" />
                   <AlertTitle className="text-amber-800 font-bold">Similar Issues Found</AlertTitle>
                   <AlertDescription className="text-amber-700">
@@ -252,7 +277,11 @@ export default function ReportIssue() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setLocation("/home")}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={createIssue.isPending}>
+              <Button 
+                type="submit" 
+                className="flex-1" 
+                disabled={createIssue.isPending || !!exactDuplicate}
+              >
                 {createIssue.isPending ? "Submitting..." : "Submit Report"}
               </Button>
             </div>
