@@ -87,6 +87,18 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
+  async findDuplicateIssue(data: { title: string; category: string; ward: string; address: string }): Promise<Issue | null> {
+    const [existing] = await db.select().from(issues).where(
+      and(
+        eq(issues.title, data.title),
+        eq(issues.category, data.category),
+        eq(issues.ward, data.ward),
+        eq(issues.address, data.address)
+      )
+    ).limit(1);
+    return existing || null;
+  }
+
   async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number; search?: string } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
     let query = db.select().from(issues);
     const conditions = [];
@@ -217,7 +229,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     allIssues.forEach(issue => {
-      const issueDate = new Date(issue.createdAt || "");
+      const issueDate = issue.createdAt ? new Date(issue.createdAt) : null;
       if (!issueDate || isNaN(issueDate.getTime())) return;
       const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
       if (monthlyTrend.hasOwnProperty(monthKey)) {

@@ -76,9 +76,10 @@ export default function ReportIssue() {
       });
       setLocation("/home");
     } catch (err: any) {
+      const isDuplicate = err.status === 409 || err.message?.includes("similar issue already exists");
       toast({
-        title: "Submission Failed",
-        description: err.message,
+        title: isDuplicate ? "Issue Already Reported" : "Submission Failed",
+        description: isDuplicate ? "A similar issue already exists in this ward and category. Please check existing issues." : err.message,
         variant: "destructive",
       });
     }
