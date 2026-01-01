@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,9 +14,11 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Redirect if already logged in
-  if (user) setLocation("/home");
-  if (admin) setLocation("/admin/dashboard");
+  // Redirect if already logged in using useEffect
+  useEffect(() => {
+    if (user) setLocation("/home");
+    if (admin) setLocation("/admin/dashboard");
+  }, [user, admin, setLocation]);
 
   const [userCreds, setUserCreds] = useState({ mobile: "", password: "" });
   const [adminCreds, setAdminCreds] = useState({ adminId: "", password: "" });

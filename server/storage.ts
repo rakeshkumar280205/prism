@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, admins, issues, votes, type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote } from "@shared/schema";
+import { users, admins, issues, votes, type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
@@ -87,7 +87,7 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
-  async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]> {
+  async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<IssueWithVoteCount[]> {
     let query = db.select().from(issues);
     const conditions = [];
 
@@ -100,11 +100,10 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    // Sort by votes (high to low) and then date
+    // Sort by date
     const allIssues = await query.orderBy(desc(issues.createdAt));
 
     // Enhance with vote data
-    // Ideally this should be a JOIN or aggregation query for performance, but loop is fine for MVP
     const enhancedIssues = await Promise.all(allIssues.map(async (issue) => {
       const voteCount = await this.getVoteCount(issue.id);
       let userHasVoted = false;
@@ -114,11 +113,10 @@ export class DatabaseStorage implements IStorage {
       return { ...issue, voteCount, userHasVoted };
     }));
     
-    // Sort by votes in memory since we didn't join
     return enhancedIssues.sort((a, b) => b.voteCount - a.voteCount);
   }
 
-  async createIssue(insertIssue: InsertIssue): Promise<Issue> {
+  async createIssue(insertIssue: any): Promise<Issue> {
     const [issue] = await db.insert(issues).values(insertIssue).returning();
     return issue;
   }
@@ -128,7 +126,7 @@ export class DatabaseStorage implements IStorage {
     return issue;
   }
 
-  async updateIssue(id: number, updates: Partial<Omit<InsertIssue, 'createdBy'>>): Promise<Issue> {
+  async updateIssue(id: number, updates: any): Promise<Issue> {
     const [issue] = await db.update(issues).set({ ...updates, updatedAt: new Date() }).where(eq(issues.id, id)).returning();
     return issue;
   }
@@ -214,10 +212,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     allIssues.forEach(issue => {
-      const issueDate = new Date(issue.createdAt);
-      const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-      if (monthlyTrend.hasOwnProperty(monthKey)) {
-        monthlyTrend[monthKey]++;
+      const createdAt = issue.createdAt;
+      if (createdAt) {
+        const issueDate = new Date(createdAt);
+        const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        if (monthlyTrend.hasOwnProperty(monthKey)) {
+          monthlyTrend[monthKey]++;
+        }
       }
     });
 

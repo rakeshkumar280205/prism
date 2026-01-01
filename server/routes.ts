@@ -283,7 +283,7 @@ export async function registerRoutes(
     try {
       // Parse body fields manually since generic FormData doesn't auto-validate via Zod middleware
       // We expect title, description, category, ward, address
-      const issueData = {
+      const issueData: any = {
         title: req.body.title,
         description: req.body.description,
         category: req.body.category,
