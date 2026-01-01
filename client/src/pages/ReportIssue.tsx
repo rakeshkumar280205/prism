@@ -114,7 +114,7 @@ export default function ReportIssue() {
                   <AlertDescription className="text-amber-700">
                     Someone might have already reported this. Check these issues first:
                     <ul className="mt-2 space-y-1 list-disc list-inside">
-                      {similarIssues.slice(0, 3).map(issue => (
+                      {similarIssues && (similarIssues as any[]).slice(0, 3).map((issue: any) => (
                         <li key={issue.id} className="text-sm">
                           <span className="font-medium">{issue.title}</span> (Ward {issue.ward})
                         </li>
