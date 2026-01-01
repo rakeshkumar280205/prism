@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { useCreateIssue, useIssues } from "@/hooks/use-issues";
+import { useState, useRef } from "react";
+import { useCreateIssue } from "@/hooks/use-issues";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Image as ImageIcon, MapPin, AlertCircle } from "lucide-react";
+import { Upload, X, Image as ImageIcon, MapPin } from "lucide-react";
 import { ImageModal } from "@/components/ImageModal";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function ReportIssue() {
   const createIssue = useCreateIssue();
@@ -27,32 +26,6 @@ export default function ReportIssue() {
   });
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [debouncedTitle, setDebouncedTitle] = useState("");
-
-  // Similar issues detection
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedTitle(formData.title);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [formData.title]);
-
-  const { data: similarIssues } = useIssues(
-    debouncedTitle.length > 3 && formData.ward && formData.category && formData.address
-      ? { 
-          search: debouncedTitle,
-          ward: formData.ward,
-          category: formData.category
-        } 
-      : undefined
-  );
-
-  const exactDuplicate = similarIssues?.find(issue => 
-    issue.title.toLowerCase() === formData.title.toLowerCase() &&
-    issue.ward === formData.ward &&
-    issue.category === formData.category &&
-    issue.address.toLowerCase() === formData.address.toLowerCase()
-  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,10 +62,9 @@ export default function ReportIssue() {
       });
       setLocation("/home");
     } catch (err: any) {
-      const isDuplicate = err.status === 409 || err.message?.includes("already exists");
       toast({
-        title: isDuplicate ? "Issue Already Reported" : "Submission Failed",
-        description: isDuplicate ? "A similar issue with the same ward, category, title, and location already exists. Please check existing reports." : err.message,
+        title: "Submission Failed",
+        description: err.message,
         variant: "destructive",
       });
     }
@@ -120,36 +92,6 @@ export default function ReportIssue() {
                 required
                 className="h-12"
               />
-              
-              {exactDuplicate && (
-                <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900 mt-2">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <AlertTitle className="text-red-800 font-bold">Issue Already Reported</AlertTitle>
-                  <AlertDescription className="text-red-700">
-                    This exact issue has already been reported in this ward and category at this location.
-                    <p className="mt-2 font-medium">Original Report: {exactDuplicate.title}</p>
-                    <p className="mt-2 text-xs italic">Please check existing reports to avoid duplicates.</p>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {!exactDuplicate && similarIssues && similarIssues.length > 0 && (
-                <Alert className="bg-amber-50 border-amber-200 text-amber-900 mt-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <AlertTitle className="text-amber-800 font-bold">Similar Issues Found</AlertTitle>
-                  <AlertDescription className="text-amber-700">
-                    Someone might have already reported this. Check these issues first:
-                    <ul className="mt-2 space-y-1 list-disc list-inside">
-                      {similarIssues && (similarIssues as any[]).slice(0, 3).map((issue: any) => (
-                        <li key={issue.id} className="text-sm">
-                          <span className="font-medium">{issue.title}</span> (Ward {issue.ward})
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-2 text-xs italic">If your issue is different, you can still submit.</p>
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
 
             {/* Category & Ward */}
@@ -277,11 +219,7 @@ export default function ReportIssue() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setLocation("/home")}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                className="flex-1" 
-                disabled={createIssue.isPending || !!exactDuplicate}
-              >
+              <Button type="submit" className="flex-1" disabled={createIssue.isPending}>
                 {createIssue.isPending ? "Submitting..." : "Submit Report"}
               </Button>
             </div>

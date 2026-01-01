@@ -257,7 +257,6 @@ export async function registerRoutes(
     const parsedFilters: any = {
       status: filters.status,
       category: filters.category,
-      search: req.query.search as string,
       createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
     };
 
@@ -281,7 +280,6 @@ export async function registerRoutes(
 
   app.post(api.issues.create.path, upload.single("image"), async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
-    const user = req.user as any;
     try {
       // Parse body fields manually since generic FormData doesn't auto-validate via Zod middleware
       // We expect title, description, category, ward, address
@@ -291,22 +289,10 @@ export async function registerRoutes(
         category: req.body.category,
         ward: req.body.ward,
         address: req.body.address,
-      };
-
-      // Check for exact duplicate (Smart handling: ward, category, title, address)
-      const duplicate = await storage.findDuplicateIssue(issueData);
-      if (duplicate) {
-        return res.status(409).json({ 
-          message: "A similar issue already exists in this ward and category with the same title and location.", 
-          issueId: duplicate.id 
-        });
-      }
-      
-      const issue = await storage.createIssue({ 
-        ...issueData, 
         image: req.file ? req.file.filename : undefined,
-        createdBy: user.id 
-      });
+      };
+      
+      const issue = await storage.createIssue({ ...issueData, createdBy: (req.user as any).id });
       io.emit("issue:new", issue); // Real-time
       res.status(201).json(issue);
     } catch (err) {
