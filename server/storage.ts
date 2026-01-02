@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { users, admins, issues, votes, type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount } from "@shared/schema";
+import { users, admins, issues, votes, auditLogs, type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount, type AuditLog, type InsertAuditLog } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
@@ -24,6 +24,10 @@ export interface IStorage {
   updateIssueStatus(id: number, status: string): Promise<Issue>;
   deleteIssue(id: number): Promise<void>;
   deleteOldResolvedIssues(): Promise<void>;
+  
+  // Audit Logs
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  listAuditLogs(): Promise<AuditLog[]>;
   
   // Votes
   toggleVote(issueId: number, userId: number): Promise<{ votes: number; voted: boolean }>;
@@ -181,6 +185,16 @@ export class DatabaseStorage implements IStorage {
   async hasUserVoted(issueId: number, userId: number): Promise<boolean> {
     const result = await db.select().from(votes).where(and(eq(votes.issueId, issueId), eq(votes.userId, userId)));
     return result.length > 0;
+  }
+
+  // Audit Logs
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [auditLog] = await db.insert(auditLogs).values(log).returning();
+    return auditLog;
+  }
+
+  async listAuditLogs(): Promise<AuditLog[]> {
+    return await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
   }
 
   // Analytics

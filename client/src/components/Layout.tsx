@@ -32,7 +32,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ] : admin ? [
     { label: "Dashboard", href: "/admin/dashboard", icon: ShieldCheck },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
-    ...(admin.role === 'SUPER_ADMIN' ? [{ label: "Admins", href: "/super-admin/dashboard", icon: User }] : [])
+    ...(admin.role === 'SUPER_ADMIN' ? [
+      { label: "Admins", href: "/super-admin/dashboard", icon: User },
+      { label: "Audit Logs", href: "/super-admin/audit-logs", icon: ClipboardList }
+    ] : [])
   ] : [];
 
   const handleLogout = () => {

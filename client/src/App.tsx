@@ -15,6 +15,7 @@ import MyIssuesPage from "@/pages/MyIssuesPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import AdminDashboard from "@/pages/AdminDashboard";
 import SuperAdminDashboard from "@/pages/SuperAdminDashboard";
+import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/profile" component={ProfilePage} />
         <Route path="/admin/dashboard" component={AdminDashboard} />
         <Route path="/super-admin/dashboard" component={SuperAdminDashboard} />
+        <Route path="/super-admin/audit-logs" component={AuditLogs} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

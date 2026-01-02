@@ -201,6 +201,17 @@ export async function registerRoutes(
 
       const hashedPassword = await bcrypt.hash(input.password, 10);
       const admin = await storage.createAdmin({ ...input, password: hashedPassword, createdBy: (req.user as any).id });
+      
+      await storage.createAuditLog({
+        actorId: (req.user as any).id,
+        actorType: "admin",
+        actorName: (req.user as any).name,
+        action: "create_admin",
+        targetId: admin.id,
+        targetType: "admin",
+        details: `Created admin ${admin.adminId} for ward ${admin.wardAssigned}`,
+      });
+
       res.status(201).json(admin);
     } catch (err) {
       res.status(500).json({ message: "Creation failed" });
@@ -211,6 +222,12 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
     const admins = await storage.listAdmins();
     res.json(admins);
+  });
+
+  app.get("/api/audit-logs", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
+    const logs = await storage.listAuditLogs();
+    res.json(logs);
   });
 
   app.put(api.admins.update.path, async (req, res) => {
@@ -315,6 +332,17 @@ export async function registerRoutes(
 
       const { status } = req.body;
       const updatedIssue = await storage.updateIssueStatus(issueId, status);
+
+      await storage.createAuditLog({
+        actorId: user.id,
+        actorType: "admin",
+        actorName: user.name,
+        action: "update_status",
+        targetId: updatedIssue.id,
+        targetType: "issue",
+        details: `Updated issue status to ${status}`,
+      });
+
       io.emit("issue:update", updatedIssue); // Real-time
       res.json(updatedIssue);
     } catch (err) {
@@ -366,6 +394,19 @@ export async function registerRoutes(
       }
       
       await storage.deleteIssue(issueId);
+
+      if (user.type === "admin") {
+        await storage.createAuditLog({
+          actorId: user.id,
+          actorType: "admin",
+          actorName: user.name,
+          action: "delete_issue",
+          targetId: issueId,
+          targetType: "issue",
+          details: `Deleted issue: ${issue.title}`,
+        });
+      }
+
       io.emit("issue:delete", { id: issueId });
       res.status(204).end();
     } catch (err) {

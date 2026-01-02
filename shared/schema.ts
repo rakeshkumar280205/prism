@@ -56,7 +56,24 @@ export const votes = pgTable("votes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// 5. Audit Logs
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  actorId: integer("actor_id").notNull(),
+  actorType: text("actor_type").notNull(), // admin or user
+  actorName: text("actor_name").notNull(),
+  action: text("action").notNull(), // create_admin, update_status, delete_issue, etc.
+  targetId: integer("target_id"),
+  targetType: text("target_type"), // admin, issue
+  details: text("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // === RELATIONS ===
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  // Define relations if needed
+}));
+
 export const issuesRelations = relations(issues, ({ one, many }) => ({
   author: one(users, {
     fields: [issues.createdBy],
@@ -93,6 +110,10 @@ export type Issue = typeof issues.$inferSelect;
 export type InsertIssue = z.infer<typeof insertIssueSchema>;
 
 export type Vote = typeof votes.$inferSelect;
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // Request/Response types
 export type CreateIssueRequest = InsertIssue;
