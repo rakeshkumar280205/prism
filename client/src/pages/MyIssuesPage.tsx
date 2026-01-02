@@ -40,16 +40,17 @@ export default function MyIssuesPage() {
     return null;
   }
 
-  // Fetch only this user's issues
   const { data: issues, isLoading, refetch } = useIssues(
     statusFilter !== "all" 
-      ? { createdBy: user.id.toString(), status: statusFilter }
-      : { createdBy: user.id.toString() }
+      ? { status: statusFilter } as any
+      : undefined
   );
 
   const filteredIssues = issues?.filter(issue => 
-    issue.title.toLowerCase().includes(search.toLowerCase()) ||
-    issue.description.toLowerCase().includes(search.toLowerCase())
+    (issue.createdBy === user.id) && (
+      issue.title.toLowerCase().includes(search.toLowerCase()) ||
+      issue.description.toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   const handleEdit = (issue: any) => {
@@ -60,10 +61,7 @@ export default function MyIssuesPage() {
   const handleSaveEdit = async (formData: FormData) => {
     setIsSaving(true);
     try {
-      await apiRequest(`/api/issues/${editingIssue.id}`, {
-        method: "PATCH",
-        body: formData,
-      });
+      await apiRequest("PATCH", `/api/issues/${editingIssue.id}`, formData);
       toast({ title: "Success", description: "Issue updated successfully" });
       setIsEditDialogOpen(false);
       refetch();
@@ -76,7 +74,7 @@ export default function MyIssuesPage() {
 
   const handleDelete = async (issueId: number) => {
     try {
-      await apiRequest(`/api/issues/${issueId}`, { method: "DELETE" });
+      await apiRequest("DELETE", `/api/issues/${issueId}`);
       toast({ title: "Success", description: "Issue deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/issues"] });
       refetch();
