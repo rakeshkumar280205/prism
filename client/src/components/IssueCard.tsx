@@ -8,6 +8,17 @@ import { useToast } from "@/hooks/use-toast";
 import { type IssueWithVoteCount } from "@shared/schema";
 import { motion } from "framer-motion";
 import { ImageModal } from "@/components/ImageModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface IssueCardProps {
   issue: IssueWithVoteCount;
@@ -25,12 +36,6 @@ const statusColors = {
 export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCardProps) {
   const voteMutation = useVoteIssue();
   const { toast } = useToast();
-
-  const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete this issue? This action cannot be undone.`)) {
-      onDelete?.(issue.id);
-    }
-  };
 
   const handleVote = () => {
     if (isAdmin) return;
@@ -144,14 +149,35 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
                 <option value="In Progress">In Progress</option>
                 <option value="Resolved">Resolved</option>
               </select>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                data-testid={`button-delete-issue-${issue.id}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    data-testid={`button-delete-issue-${issue.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the issue
+                      "{issue.title}" and remove all associated data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete?.(issue.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </CardFooter>
