@@ -295,6 +295,18 @@ export async function registerRoutes(
     res.json(issues);
   });
 
+  app.post("/api/issues/check-duplicates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+    try {
+      const { ward, category, title } = req.body;
+      if (!ward || !category || !title) return res.status(400).json({ message: "Missing required fields" });
+      const duplicates = await (storage as any).findPotentialDuplicates({ ward, category, title });
+      res.json(duplicates);
+    } catch (err) {
+      res.status(500).json({ message: "Duplicate check failed" });
+    }
+  });
+
   app.post(api.issues.create.path, upload.single("image"), async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {

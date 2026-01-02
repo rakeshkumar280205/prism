@@ -24,6 +24,7 @@ export interface IStorage {
   updateIssueStatus(id: number, status: string): Promise<Issue>;
   deleteIssue(id: number): Promise<void>;
   deleteOldResolvedIssues(): Promise<void>;
+  findPotentialDuplicates(data: { ward: string; category: string; title: string }): Promise<IssueWithVoteCount[]>;
   
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
@@ -158,6 +159,25 @@ export class DatabaseStorage implements IStorage {
     if (oldIssues.length > 0) {
       console.log(`Auto-deleted ${oldIssues.length} resolved issues older than 30 days.`);
     }
+  }
+
+  async findPotentialDuplicates(data: { ward: string; category: string; title: string }): Promise<IssueWithVoteCount[]> {
+    const similarIssues = await db.select()
+      .from(issues)
+      .where(
+        and(
+          eq(issues.ward, data.ward),
+          eq(issues.category, data.category),
+          sql`LOWER(${issues.title}) LIKE ${'%' + data.title.toLowerCase() + '%'}`
+        )
+      )
+      .orderBy(desc(issues.createdAt))
+      .limit(5);
+
+    return Promise.all(similarIssues.map(async (issue) => {
+      const voteCount = await this.getVoteCount(issue.id);
+      return { ...issue, voteCount, userHasVoted: false };
+    }));
   }
 
   // Votes

@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useCreateIssue } from "@/hooks/use-issues";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, X, Image as ImageIcon, MapPin } from "lucide-react";
+import { Upload, X, Image as ImageIcon, MapPin, AlertCircle, ThumbsUp } from "lucide-react";
 import { ImageModal } from "@/components/ImageModal";
+import { apiRequest } from "@/lib/queryClient";
+import { IssueWithVoteCount } from "@shared/schema";
 
 export default function ReportIssue() {
   const createIssue = useCreateIssue();
@@ -26,6 +28,30 @@ export default function ReportIssue() {
   });
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<IssueWithVoteCount[]>([]);
+
+  useEffect(() => {
+    const checkDuplicates = async () => {
+      if (formData.title.length > 3 && formData.category && formData.ward) {
+        try {
+          const res = await apiRequest("POST", "/api/issues/check-duplicates", {
+            title: formData.title,
+            category: formData.category,
+            ward: formData.ward
+          });
+          const data = await res.json();
+          setDuplicates(data);
+        } catch (err) {
+          console.error("Failed to check duplicates", err);
+        }
+      } else {
+        setDuplicates([]);
+      }
+    };
+
+    const timer = setTimeout(checkDuplicates, 500);
+    return () => clearTimeout(timer);
+  }, [formData.title, formData.category, formData.ward]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -214,6 +240,36 @@ export default function ReportIssue() {
                 onChange={handleImageChange} 
               />
             </div>
+
+            {/* Duplicate Warning */}
+            {duplicates.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-amber-800">Possible Similar Issues Found</h4>
+                    <p className="text-sm text-amber-700">These issues in Ward {formData.ward} might be the same as yours. Consider upvoting them instead of creating a new report.</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {duplicates.map((issue) => (
+                    <div key={issue.id} className="bg-white border border-amber-100 rounded-lg p-3 flex justify-between items-center group hover:border-amber-300 transition-colors">
+                      <div className="min-w-0 flex-1 pr-4">
+                        <p className="font-medium text-slate-900 truncate">{issue.title}</p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {issue.address}
+                        </p>
+                      </div>
+                      <Link href={`/home`}>
+                        <Button type="button" size="sm" variant="outline" className="h-8 border-amber-200 hover:bg-amber-50 text-amber-700">
+                          <ThumbsUp className="h-3 w-3 mr-1" /> {issue.voteCount}
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="pt-4 flex gap-4">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setLocation("/home")}>
