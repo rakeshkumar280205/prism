@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, ShieldCheck, User, Building2, Eye, EyeOff } from "lucide-react";
 
+import prismLogo from "@assets/image_1767338273702.jpeg";
+
 export default function AuthPage() {
   const { loginUser, loginAdmin, user, admin } = useAuth();
   const [, setLocation] = useLocation();
@@ -55,20 +57,17 @@ export default function AuthPage() {
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left Panel - Branding */}
       <div className="relative hidden lg:flex flex-col justify-between bg-primary p-10 text-primary-foreground overflow-hidden">
-        <div className="z-10 flex items-center gap-2">
-          <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-            <MapPin className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-display font-bold">CityVoice</h1>
+        <div className="z-10 flex items-center gap-3">
+          <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-contain bg-white rounded-full p-1" />
+          <h1 className="text-3xl font-display font-bold">Prism</h1>
         </div>
 
         <div className="z-10 max-w-lg space-y-6">
           <h2 className="text-4xl font-display font-bold leading-tight">
-            Together for a Better City.<br/>Report. Resolve. Improve.
+            Bengaluru Prism.<br/>Civic Engagement Platform.
           </h2>
           <p className="text-lg text-primary-foreground/80">
-            Empowering citizens to report municipal issues directly to the authorities.
-            Track progress, vote on urgent matters, and build a better community.
+            A transparent lens into civic issues. Report problems, track resolutions, and help build a better city together.
           </p>
           <div className="flex gap-4 pt-4">
             <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
@@ -91,11 +90,9 @@ export default function AuthPage() {
       {/* Right Panel - Login Forms */}
       <div className="flex items-center justify-center p-8 bg-slate-50">
         <div className="w-full max-w-md space-y-8">
-          <div className="lg:hidden flex items-center gap-2 justify-center mb-8">
-            <div className="bg-primary p-2 rounded-lg">
-              <MapPin className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-2xl font-display font-bold text-slate-900">CityVoice</h1>
+          <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
+            <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-contain" />
+            <h1 className="text-3xl font-display font-bold text-slate-900">Prism</h1>
           </div>
 
           <Tabs defaultValue="citizen" className="w-full">

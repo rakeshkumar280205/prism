@@ -17,6 +17,8 @@ import {
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
+import prismLogo from "@assets/image_1767338273702.jpeg";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, admin, logout } = useAuth();
   const [location] = useLocation();
@@ -51,11 +53,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="container flex h-16 items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-2">
             <Link href={user ? "/home" : "/admin/dashboard"} className="flex items-center gap-2">
-              <div className="bg-primary p-1.5 rounded-lg">
-                <MapPin className="h-5 w-5 text-white" />
-              </div>
+              <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-contain" />
               <span className="font-display font-bold text-xl tracking-tight text-slate-900">
-                City<span className="text-primary">Voice</span>
+                Prism
               </span>
             </Link>
           </div>
@@ -100,10 +100,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <SheetContent side="left" className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col gap-6 mt-8">
                 <div className="flex items-center gap-2 px-2">
-                  <div className="bg-primary p-1.5 rounded-lg">
-                    <MapPin className="h-5 w-5 text-white" />
-                  </div>
-                  <span className="font-display font-bold text-xl">CityVoice</span>
+                  <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-contain" />
+                  <span className="font-display font-bold text-xl">Prism</span>
                 </div>
                 
                 <div className="flex flex-col gap-1">
@@ -154,7 +152,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Footer */}
       <footer className="border-t bg-white py-6 md:py-8">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-sm text-muted-foreground">
-          <p>© 2024 CityVoice Municipal Services. All rights reserved.</p>
+          <p>© 2024 Prism Municipal Services. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link href="#" className="hover:text-primary transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-primary transition-colors">Terms of Service</Link>
