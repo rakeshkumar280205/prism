@@ -84,7 +84,6 @@ export default function AuthPage() {
         {/* Abstract Background Shapes */}
         <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-blue-400 opacity-20 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-full w-full bg-gradient-to-t from-black/20 to-transparent" />
-        <div className="z-10 text-sm opacity-60">© 2024 Municipal Corporation</div>
       </div>
 
       {/* Right Panel - Login Forms */}
