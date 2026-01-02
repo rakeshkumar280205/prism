@@ -281,8 +281,6 @@ export async function registerRoutes(
   app.post(api.issues.create.path, upload.single("image"), async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {
-      // Parse body fields manually since generic FormData doesn't auto-validate via Zod middleware
-      // We expect title, description, category, ward, address
       const issueData: any = {
         title: req.body.title,
         description: req.body.description,
@@ -425,6 +423,28 @@ export async function registerRoutes(
     });
     console.log("Super Admin seeded: superadmin / admin123");
   }
+
+  // Auto-delete resolved issues every 24 hours
+  setInterval(async () => {
+    try {
+      if ((storage as any).deleteOldResolvedIssues) {
+        await (storage as any).deleteOldResolvedIssues();
+      }
+    } catch (err) {
+      console.error("Auto-delete task failed:", err);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  // Run once on startup
+  setTimeout(async () => {
+    try {
+      if ((storage as any).deleteOldResolvedIssues) {
+        await (storage as any).deleteOldResolvedIssues();
+      }
+    } catch (err) {
+      console.error("Initial auto-delete task failed:", err);
+    }
+  }, 5000);
 
   return httpServer;
 }

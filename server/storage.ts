@@ -19,11 +19,12 @@ export interface IStorage {
 
   // Issues
   getIssue(id: number): Promise<Issue | undefined>;
-  getIssues(filters?: { ward?: string; status?: string; category?: string }): Promise<(Issue & { voteCount: number; userHasVoted: boolean })[]>; // Adjusted return type
-  createIssue(issue: InsertIssue): Promise<Issue>;
+  getIssues(filters?: { ward?: string | number; status?: string; category?: string; createdBy?: number }, userId?: number): Promise<IssueWithVoteCount[]>;
+  createIssue(issue: any): Promise<Issue>;
   updateIssueStatus(id: number, status: string): Promise<Issue>;
   deleteIssue(id: number): Promise<void>;
-
+  deleteOldResolvedIssues(): Promise<void>;
+  
   // Votes
   toggleVote(issueId: number, userId: number): Promise<{ votes: number; voted: boolean }>;
   getVoteCount(issueId: number): Promise<number>;
@@ -134,6 +135,25 @@ export class DatabaseStorage implements IStorage {
   async deleteIssue(id: number): Promise<void> {
     await db.delete(votes).where(eq(votes.issueId, id)); // Cascade delete votes
     await db.delete(issues).where(eq(issues.id, id));
+  }
+
+  async deleteOldResolvedIssues(): Promise<void> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const oldIssues = await db.select().from(issues).where(
+      and(
+        eq(issues.status, "Resolved"),
+        sql`${issues.updatedAt} < ${thirtyDaysAgo}`
+      )
+    );
+
+    for (const issue of oldIssues) {
+      await this.deleteIssue(issue.id);
+    }
+    if (oldIssues.length > 0) {
+      console.log(`Auto-deleted ${oldIssues.length} resolved issues older than 30 days.`);
+    }
   }
 
   // Votes
