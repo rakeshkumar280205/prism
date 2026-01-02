@@ -12,6 +12,17 @@ import { useState } from "react";
 import { EditIssueDialog } from "@/components/EditIssueDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function MyIssuesPage() {
   const { user } = useAuth();
@@ -64,8 +75,6 @@ export default function MyIssuesPage() {
   };
 
   const handleDelete = async (issueId: number) => {
-    if (!confirm("Are you sure you want to delete this issue? This action cannot be undone.")) return;
-    
     try {
       await apiRequest(`/api/issues/${issueId}`, { method: "DELETE" });
       toast({ title: "Success", description: "Issue deleted successfully" });
@@ -133,15 +142,36 @@ export default function MyIssuesPage() {
                 >
                   <Edit2 className="h-4 w-4" />
                 </Button>
-                <Button 
-                  size="icon" 
-                  variant="destructive"
-                  className="shadow-md"
-                  onClick={() => handleDelete(issue.id)}
-                  data-testid={`button-delete-issue-${issue.id}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      size="icon" 
+                      variant="destructive"
+                      className="shadow-md"
+                      data-testid={`button-delete-issue-${issue.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your reported issue
+                        "{issue.title}" and remove it from the system.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(issue.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           ))

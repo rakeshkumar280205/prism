@@ -34,8 +34,6 @@ export default function AdminDashboard() {
     const issue = issues?.find(i => i.id === id);
     if (!issue) return;
 
-    if (!confirm("Are you sure you want to delete this issue?")) return;
-
     try {
       await deleteIssue.mutateAsync(id);
       toast({ title: "Issue Deleted", description: "The issue has been successfully removed." });

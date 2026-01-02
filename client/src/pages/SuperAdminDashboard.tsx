@@ -11,6 +11,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Shield, AlertCircle, Loader2, Pencil, Trash2, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function SuperAdminDashboard() {
   const { admin } = useAuth();
@@ -85,7 +96,6 @@ export default function SuperAdminDashboard() {
   };
 
   const handleDeleteAdmin = async (id: number, adminId: string) => {
-    if (!confirm(`Are you sure you want to delete admin '${adminId}'?`)) return;
     try {
       await deleteAdmin.mutateAsync(id);
       toast({
@@ -371,15 +381,35 @@ export default function SuperAdminDashboard() {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteAdmin(admin.id, admin.adminId)}
-                          data-testid={`button-delete-admin-${admin.id}`}
-                          disabled={admin.role === "SUPER_ADMIN"}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              data-testid={`button-delete-admin-${admin.id}`}
+                              disabled={admin.role === "SUPER_ADMIN"}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Admin Account</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete admin '{admin.adminId}'? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteAdmin(admin.id, admin.adminId)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
