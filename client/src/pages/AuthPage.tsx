@@ -58,7 +58,7 @@ export default function AuthPage() {
       {/* Left Panel - Branding */}
       <div className="relative hidden lg:flex flex-col justify-between bg-primary p-10 text-primary-foreground overflow-hidden">
         <div className="z-10 flex items-center gap-3">
-          <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-contain bg-white rounded-full p-1" />
+          <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-cover bg-white rounded-full p-0.5" />
           <h1 className="text-3xl font-display font-bold">Prism</h1>
         </div>
 
@@ -91,7 +91,7 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8 bg-slate-50">
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
-            <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-contain" />
+            <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-cover rounded-full border border-slate-200" />
             <h1 className="text-3xl font-display font-bold text-slate-900">Prism</h1>
           </div>
 

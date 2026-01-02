@@ -53,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="container flex h-16 items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-2">
             <Link href={user ? "/home" : "/admin/dashboard"} className="flex items-center gap-2">
-              <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-contain" />
+              <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-cover rounded-full border border-slate-200" />
               <span className="font-display font-bold text-xl tracking-tight text-slate-900">
                 Prism
               </span>
@@ -100,7 +100,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <SheetContent side="left" className="w-[300px] sm:w-[400px]">
               <div className="flex flex-col gap-6 mt-8">
                 <div className="flex items-center gap-2 px-2">
-                  <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-contain" />
+                  <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-cover rounded-full border border-slate-200" />
                   <span className="font-display font-bold text-xl">Prism</span>
                 </div>
                 
