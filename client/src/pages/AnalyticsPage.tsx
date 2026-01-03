@@ -223,29 +223,36 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Ward-wise Issues */}
-        <Card className="border-slate-200" data-testid="chart-ward-distribution">
+        {/* Resolution Rate */}
+        <Card className="border-slate-200" data-testid="chart-resolution-rate">
           <CardHeader>
-            <CardTitle>Ward-wise Issues</CardTitle>
-            <CardDescription>Issues reported by ward</CardDescription>
+            <CardTitle>Issue Status Distribution</CardTitle>
+            <CardDescription>Current state of all reported problems</CardDescription>
           </CardHeader>
           <CardContent>
-            {analytics.wardDistribution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.wardDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" stroke="#64748b" />
-                  <YAxis stroke="#64748b" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569", borderRadius: "8px" }}
-                    labelStyle={{ color: "#f1f5f9" }}
-                  />
-                  <Bar dataKey="value" fill="#3B82F6" name="Issues" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-center text-slate-500 py-10">No ward data</p>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "Pending", value: analytics.pendingCount },
+                    { name: "In Progress", value: analytics.inProgressCount },
+                    { name: "Resolved", value: analytics.resolvedCount }
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  <Cell fill="#F59E0B" />
+                  <Cell fill="#8B5CF6" />
+                  <Cell fill="#10B981" />
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
