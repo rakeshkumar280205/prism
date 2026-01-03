@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
   };
 
   const getRoleLabel = () => {
-    if (user) return "My Issues Analytics";
+    if (user) return `Ward ${user.ward} Analytics`;
     if (admin?.role === "SUPER_ADMIN") return "All Issues Analytics";
     return "Ward Analytics";
   };

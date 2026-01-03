@@ -444,7 +444,7 @@ export async function registerRoutes(
       let analytics;
       
       if (user.type === "user") {
-        analytics = await (storage as any).getAnalytics(user.id, undefined, false);
+        analytics = await (storage as any).getAnalytics(user.id, user.ward, false);
       } else if (user.type === "admin") {
         if (user.role === "SUPER_ADMIN") {
           analytics = await (storage as any).getAnalytics(undefined, undefined, true);

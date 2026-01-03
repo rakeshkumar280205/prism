@@ -218,17 +218,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Analytics
-  async getAnalytics(userId?: number, adminWard?: string, isSuperAdmin?: boolean) {
+  async getAnalytics(userId?: number, ward?: string, isSuperAdmin?: boolean) {
     let query = db.select().from(issues);
     const conditions = [];
 
     // Filter based on role
-    if (userId && !isSuperAdmin && !adminWard) {
-      // User: only their own issues
+    if (userId && !isSuperAdmin && !ward) {
+      // User: only their own issues (fallback if no ward)
       conditions.push(eq(issues.createdBy, userId));
-    } else if (adminWard && !isSuperAdmin) {
-      // Admin: only their assigned ward
-      conditions.push(eq(issues.ward, adminWard));
+    } else if (ward && !isSuperAdmin) {
+      // User/Admin: only their assigned ward
+      conditions.push(eq(issues.ward, ward));
     }
     // SuperAdmin: all issues (no filter)
 
