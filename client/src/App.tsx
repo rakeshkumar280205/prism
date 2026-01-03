@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
+import { I18nContext, Language, translations } from "./lib/i18n";
+import { useState, useEffect } from "react";
 
 // Pages
 import AuthPage from "@/pages/AuthPage";
@@ -39,11 +41,26 @@ function Router() {
 }
 
 function App() {
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem("app_lang");
+    return (saved as Language) || "en";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("app_lang", language);
+  }, [language]);
+
+  const t = (key: keyof typeof translations.en) => {
+    return translations[language][key] || translations.en[key] || key;
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
-        <Toaster />
+        <I18nContext.Provider value={{ language, setLanguage, t }}>
+          <Router />
+          <Toaster />
+        </I18nContext.Provider>
       </TooltipProvider>
     </QueryClientProvider>
   );
