@@ -51,7 +51,7 @@ export default function RegisterPage() {
              </Link>
              <div>
                <CardTitle className="text-2xl font-display text-slate-900">Citizen Registration</CardTitle>
-               <CardDescription>Join CityVoice to report issues and improve your neighborhood</CardDescription>
+               <CardDescription>Join Prism to report issues and improve your neighborhood</CardDescription>
              </div>
           </div>
         </CardHeader>
@@ -136,6 +136,7 @@ export default function RegisterPage() {
                   id="password" 
                   type={showPassword ? "text" : "password"} 
                   required 
+                  minLength={6}
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Min 6 characters"

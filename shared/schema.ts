@@ -94,8 +94,12 @@ export const votesRelations = relations(votes, ({ one }) => ({
 }));
 
 // === BASE SCHEMAS ===
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, role: true });
-export const insertAdminSchema = createInsertSchema(admins).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, role: true }).extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+export const insertAdminSchema = createInsertSchema(admins).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 export const insertIssueSchema = createInsertSchema(issues).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true });
 export const updateIssueSchema = insertIssueSchema.partial();
 
