@@ -258,6 +258,17 @@ export async function registerRoutes(
       if (admin.role === "SUPER_ADMIN") return res.status(403).json({ message: "Cannot delete Super Admin" });
       
       await storage.deleteAdmin(adminId);
+
+      await storage.createAuditLog({
+        actorId: (req.user as any).id,
+        actorType: "admin",
+        actorName: (req.user as any).name,
+        action: "delete_admin",
+        targetId: adminId,
+        targetType: "admin",
+        details: `Deleted admin account: ${admin.adminId}`,
+      });
+
       res.json({ message: "Admin deleted" });
     } catch (err) {
       res.status(500).json({ message: "Deletion failed" });
