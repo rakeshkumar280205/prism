@@ -371,14 +371,14 @@ export async function registerRoutes(
       if (issue.createdBy !== (req.user as any).id) return res.status(403).json({ message: "Can only edit your own issues" });
 
       const updates: any = {};
-      if (req.body.title) updates.title = req.body.title;
-      if (req.body.description) updates.description = req.body.description;
-      if (req.body.category) updates.category = req.body.category;
-      if (req.body.ward) updates.ward = req.body.ward;
-      if (req.body.address) updates.address = req.body.address;
+      if (req.body.title !== undefined) updates.title = req.body.title;
+      if (req.body.description !== undefined) updates.description = req.body.description;
+      if (req.body.category !== undefined) updates.category = req.body.category;
+      if (req.body.ward !== undefined) updates.ward = req.body.ward;
+      if (req.body.address !== undefined) updates.address = req.body.address;
       if (req.file) updates.image = req.file.filename;
 
-      const updated = await (storage as any).updateIssue(issueId, updates);
+      const updated = await storage.updateIssue(issueId, updates);
       io.emit("issue:update", updated); // Real-time
       res.json(updated);
     } catch (err) {

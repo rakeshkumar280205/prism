@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertIssueSchema } from "@shared/schema";
 import { z } from "zod";
@@ -26,7 +26,7 @@ interface EditIssueDialogProps {
 
 export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: EditIssueDialogProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<EditIssueForm>({
+  const { register, handleSubmit, formState: { errors }, control } = useForm<EditIssueForm>({
     resolver: zodResolver(editIssueSchema),
     defaultValues: {
       title: issue?.title || "",
@@ -36,8 +36,6 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
       address: issue?.address || "",
     },
   });
-
-  const category = watch("category");
 
   const onSubmit = (data: EditIssueForm) => {
     const formData = new FormData();
@@ -59,7 +57,7 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           <DialogDescription>Update your issue details</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-96 overflow-y-auto">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-96 overflow-y-auto px-1">
           <div>
             <Label htmlFor="title">Title</Label>
             <Input
@@ -85,18 +83,25 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
 
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select defaultValue={category} onValueChange={(value) => register("category").onChange({ target: { value } })}>
-              <SelectTrigger id="category" data-testid="select-edit-category">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Roads">Roads</SelectItem>
-                <SelectItem value="Drainage">Drainage</SelectItem>
-                <SelectItem value="Garbage">Garbage</SelectItem>
-                <SelectItem value="Streetlights">Streetlights</SelectItem>
-                <SelectItem value="Water Supply">Water Supply</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="category"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="category" data-testid="select-edit-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Roads">Roads</SelectItem>
+                    <SelectItem value="Drainage">Drainage</SelectItem>
+                    <SelectItem value="Garbage">Garbage</SelectItem>
+                    <SelectItem value="Streetlights">Streetlights</SelectItem>
+                    <SelectItem value="Water Supply">Water Supply</SelectItem>
+                    <SelectItem value="Others">Others</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div>
