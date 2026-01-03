@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useIssues, useUpdateIssueStatus, useDeleteIssue } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
+import { useAuth } from "@/hooks/use-auth";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, BarChart3, PieChart, Users, CheckCircle2 } from "lucide-react";
 
 export default function AdminDashboard() {
+  const { admin } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const updateStatus = useUpdateIssueStatus();
@@ -52,13 +54,20 @@ export default function AdminDashboard() {
   const pendingIssues = issues?.filter(i => i.status === "Pending").length || 0;
   const resolvedIssues = issues?.filter(i => i.status === "Resolved").length || 0;
 
+  const getDashboardSubtitle = () => {
+    if (admin?.role === "SUPER_ADMIN") {
+      return "Oversee all reported issues across all wards";
+    }
+    return issues && issues.length > 0 ? `Managing Ward ${issues[0].ward}` : "Manage reported issues and update status";
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-slate-900">Admin Dashboard</h1>
           <p className="text-slate-500">
-            {issues && issues.length > 0 ? `Managing Ward ${issues[0].ward}` : "Manage reported issues and update status"}
+            {getDashboardSubtitle()}
           </p>
         </div>
       </div>
