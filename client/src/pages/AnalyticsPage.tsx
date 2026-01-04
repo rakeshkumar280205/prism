@@ -6,6 +6,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { useSocket } from "@/hooks/use-socket";
 import { BarChart3, TrendingUp, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useI18n } from "@/lib/i18n";
 
 interface AnalyticsData {
   totalIssues: number;
@@ -20,6 +21,7 @@ interface AnalyticsData {
 const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899"];
 
 export default function AnalyticsPage() {
+  const { language, t } = useI18n();
   const { user, admin } = useAuth();
   const [, setLocation] = useLocation();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -66,15 +68,15 @@ export default function AnalyticsPage() {
   };
 
   const getRoleLabel = () => {
-    if (user) return `Ward ${user.ward} Analytics`;
-    if (admin?.role === "SUPER_ADMIN") return "All Issues Analytics";
-    return "Ward Analytics";
+    if (user) return `${t("common.ward")} ${user.ward} ${t("analytics.title")}`;
+    if (admin?.role === "SUPER_ADMIN") return `All Issues ${t("analytics.title")}`;
+    return `${t("common.ward")} ${t("analytics.title")}`;
   };
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <h1 className="text-3xl font-display font-bold">{getRoleLabel()}</h1>
+      <div className={`space-y-8 ${language === 'kn' ? 'font-kannada' : ''}`}>
+        <h1 className={`font-display font-bold ${language === 'kn' ? 'text-2xl' : 'text-3xl'}`}>{getRoleLabel()}</h1>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32 rounded-lg" />
@@ -86,7 +88,7 @@ export default function AnalyticsPage() {
 
   if (!analytics) {
     return (
-      <div className="text-center py-10">
+      <div className={`text-center py-10 ${language === 'kn' ? 'font-kannada' : ''}`}>
         <AlertCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
         <p className="text-slate-600">No analytics data available yet.</p>
       </div>
@@ -94,15 +96,15 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className={`space-y-8 ${language === 'kn' ? 'font-kannada' : ''}`}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="bg-primary p-2 rounded-lg">
           <BarChart3 className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-3xl font-display font-bold">{getRoleLabel()}</h1>
-          <p className="text-slate-600 text-sm">Real-time issue tracking and trends</p>
+          <h1 className={`font-display font-bold ${language === 'kn' ? 'text-2xl' : 'text-3xl'}`}>{getRoleLabel()}</h1>
+          <p className={`text-slate-600 text-sm ${language === 'kn' ? 'text-xs' : ''}`}>{t("analytics.subtitle")}</p>
         </div>
       </div>
 
@@ -110,7 +112,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-slate-200" data-testid="card-total-issues">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
+            <CardTitle className={`font-medium ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>{t("analytics.total")}</CardTitle>
             <div className="bg-blue-100 p-2 rounded-lg">
               <BarChart3 className="h-4 w-4 text-blue-600" />
             </div>
@@ -122,7 +124,7 @@ export default function AnalyticsPage() {
 
         <Card className="border-slate-200" data-testid="card-pending-issues">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <CardTitle className={`font-medium ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>{t("analytics.pending")}</CardTitle>
             <div className="bg-amber-100 p-2 rounded-lg">
               <Clock className="h-4 w-4 text-amber-600" />
             </div>
@@ -134,7 +136,7 @@ export default function AnalyticsPage() {
 
         <Card className="border-slate-200" data-testid="card-in-progress-issues">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+            <CardTitle className={`font-medium ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>{t("analytics.progress")}</CardTitle>
             <div className="bg-purple-100 p-2 rounded-lg">
               <TrendingUp className="h-4 w-4 text-purple-600" />
             </div>
@@ -146,7 +148,7 @@ export default function AnalyticsPage() {
 
         <Card className="border-slate-200" data-testid="card-resolved-issues">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+            <CardTitle className={`font-medium ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>{t("analytics.resolved")}</CardTitle>
             <div className="bg-green-100 p-2 rounded-lg">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             </div>
@@ -162,8 +164,10 @@ export default function AnalyticsPage() {
         {/* Monthly Trend */}
         <Card className="border-slate-200 col-span-1 lg:col-span-2" data-testid="chart-monthly-trend">
           <CardHeader>
-            <CardTitle>Monthly Trend</CardTitle>
-            <CardDescription>Issue reports over the last 12 months</CardDescription>
+            <CardTitle className={language === 'kn' ? 'text-lg' : ''}>{t("analytics.trend")}</CardTitle>
+            <CardDescription className={language === 'kn' ? 'text-xs' : ''}>
+              {language === 'kn' ? 'ಕಳೆದ 12 ತಿಂಗಳುಗಳ ವರದಿಗಳು' : 'Issue reports over the last 12 months'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -180,7 +184,7 @@ export default function AnalyticsPage() {
                   type="monotone" 
                   dataKey="count" 
                   stroke="#3B82F6" 
-                  name="Issues Reported"
+                  name={language === 'kn' ? 'ವರದಿಯಾದ ಸಮಸ್ಯೆಗಳು' : 'Issues Reported'}
                   strokeWidth={2}
                   dot={{ fill: "#3B82F6", r: 4 }}
                   activeDot={{ r: 6 }}
@@ -193,8 +197,10 @@ export default function AnalyticsPage() {
         {/* Category Distribution */}
         <Card className="border-slate-200" data-testid="chart-category-distribution">
           <CardHeader>
-            <CardTitle>Category Distribution</CardTitle>
-            <CardDescription>Issues by category</CardDescription>
+            <CardTitle className={language === 'kn' ? 'text-lg' : ''}>{t("analytics.category")}</CardTitle>
+            <CardDescription className={language === 'kn' ? 'text-xs' : ''}>
+              {language === 'kn' ? 'ವರ್ಗಗಳ ಆಧಾರದ ಮೇಲೆ ಸಮಸ್ಯೆಗಳು' : 'Issues by category'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {analytics.categoryDistribution.length > 0 ? (
@@ -226,17 +232,19 @@ export default function AnalyticsPage() {
         {/* Resolution Rate */}
         <Card className="border-slate-200" data-testid="chart-resolution-rate">
           <CardHeader>
-            <CardTitle>Issue Status Distribution</CardTitle>
-            <CardDescription>Current state of all reported problems</CardDescription>
+            <CardTitle className={language === 'kn' ? 'text-lg' : ''}>{t("analytics.status")}</CardTitle>
+            <CardDescription className={language === 'kn' ? 'text-xs' : ''}>
+              {language === 'kn' ? 'ವರದಿಯಾದ ಎಲ್ಲಾ ಸಮಸ್ಯೆಗಳ ಪ್ರಸ್ತುತ ಸ್ಥಿತಿ' : 'Current state of all reported problems'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={[
-                    { name: "Pending", value: analytics.pendingCount },
-                    { name: "In Progress", value: analytics.inProgressCount },
-                    { name: "Resolved", value: analytics.resolvedCount }
+                    { name: t("analytics.pending"), value: analytics.pendingCount },
+                    { name: t("analytics.progress"), value: analytics.inProgressCount },
+                    { name: t("analytics.resolved"), value: analytics.resolvedCount }
                   ]}
                   cx="50%"
                   cy="50%"

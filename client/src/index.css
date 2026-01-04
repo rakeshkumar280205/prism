@@ -1,13 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-kannada: "Noto Sans Kannada", sans-serif;
+}
+
 :root {
   /* Municipal Blue Theme - Trustworthy, Clean, Professional */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Outfit', sans-serif;
+  --font-kannada: 'Noto Sans Kannada', sans-serif;
 
   /* HSL Values for easy manipulation */
   --background: 210 40% 98%;      /* Light cool gray */
@@ -83,6 +90,22 @@
     font-family: var(--font-display);
     @apply font-semibold tracking-tight;
   }
+}
+
+.font-kannada {
+  font-family: var(--font-kannada) !important;
+  line-height: 1.6 !important;
+}
+
+.font-kannada label, 
+.font-kannada p, 
+.font-kannada span, 
+.font-kannada button,
+.font-kannada h1,
+.font-kannada h2,
+.font-kannada h3,
+.font-kannada h4 {
+  letter-spacing: 0.01em;
 }
 
 /* Custom Utilities for Polish */

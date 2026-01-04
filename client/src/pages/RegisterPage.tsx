@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { language, t } = useI18n();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -28,13 +30,13 @@ export default function RegisterPage() {
     try {
       await register.mutateAsync(formData);
       toast({
-        title: "Registration Successful",
+        title: t("reg.success"),
         description: "Please login with your credentials.",
       });
       setLocation("/");
     } catch (err: any) {
       toast({
-        title: "Registration Failed",
+        title: t("reg.failed"),
         description: err.message,
         variant: "destructive",
       });
@@ -42,7 +44,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className={`min-h-screen flex items-center justify-center bg-slate-50 p-4 ${language === 'kn' ? 'font-kannada' : ''}`}>
       <Card className="w-full max-w-2xl shadow-xl border-slate-200">
         <CardHeader className="space-y-2 border-b bg-white rounded-t-xl pb-6">
           <div className="flex items-center gap-4 mb-2">
@@ -50,15 +52,15 @@ export default function RegisterPage() {
                <ChevronLeft className="h-5 w-5 text-slate-500" />
              </Link>
              <div>
-               <CardTitle className="text-2xl font-display text-slate-900">Citizen Registration</CardTitle>
-               <CardDescription>Join Prism to report issues and improve your neighborhood</CardDescription>
+               <CardTitle className={`font-display text-slate-900 ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("reg.title")}</CardTitle>
+               <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.subtitle")}</CardDescription>
              </div>
           </div>
         </CardHeader>
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
+              <Label htmlFor="name" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.name")} <span className="text-red-500">*</span></Label>
               <Input 
                 id="name" 
                 required 
@@ -69,7 +71,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mobile">Mobile Number <span className="text-red-500">*</span></Label>
+              <Label htmlFor="mobile" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.mobile")} <span className="text-red-500">*</span></Label>
               <Input 
                 id="mobile" 
                 required 
@@ -83,11 +85,11 @@ export default function RegisterPage() {
                 maxLength={10}
                 data-testid="input-mobile"
               />
-              <p className="text-xs text-slate-500">10 digits required</p>
+              <p className="text-xs text-slate-500">{t("reg.mobile_help")}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.email")}</Label>
               <Input 
                 id="email" 
                 type="email" 
@@ -98,7 +100,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ward">Ward Number <span className="text-red-500">*</span></Label>
+              <Label htmlFor="ward" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.ward")} <span className="text-red-500">*</span></Label>
               <Input 
                 id="ward" 
                 required 
@@ -116,11 +118,11 @@ export default function RegisterPage() {
                 placeholder="Enter ward number (1-200)"
                 data-testid="input-ward"
               />
-              <p className="text-xs text-slate-500">Enter a number between 1 and 200</p>
+              <p className="text-xs text-slate-500">{t("reg.ward_help")}</p>
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="address">Residential Address</Label>
+              <Label htmlFor="address" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.address")}</Label>
               <Input 
                 id="address" 
                 value={formData.address}
@@ -130,7 +132,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="password">Create Password <span className="text-red-500">*</span></Label>
+              <Label htmlFor="password" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.create_password")} <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <Input 
                   id="password" 
@@ -139,7 +141,7 @@ export default function RegisterPage() {
                   minLength={6}
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Min 6 characters"
+                  placeholder={t("reg.min_chars")}
                   className="pr-10"
                   data-testid="input-password"
                 />
@@ -157,8 +159,8 @@ export default function RegisterPage() {
             </div>
 
             <div className="md:col-span-2 pt-4">
-              <Button type="submit" className="w-full h-11 text-base" disabled={register.isPending}>
-                {register.isPending ? "Creating Account..." : "Create Account"}
+              <Button type="submit" className={`w-full h-11 ${language === 'kn' ? 'text-sm' : 'text-base'}`} disabled={register.isPending}>
+                {register.isPending ? t("reg.creating") : t("reg.create_account")}
               </Button>
             </div>
           </form>

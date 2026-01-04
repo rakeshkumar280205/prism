@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, ShieldCheck, User, Building2, Eye, EyeOff } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 import prismLogo from "@assets/image_1767338273702.jpeg";
 
@@ -15,6 +16,7 @@ export default function AuthPage() {
   const { loginUser, loginAdmin, user, admin } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { language, t } = useI18n();
 
   // Redirect if already logged in using useEffect
   useEffect(() => {
@@ -54,29 +56,36 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className={`min-h-screen grid lg:grid-cols-2 ${language === 'kn' ? 'font-kannada' : ''}`}>
       {/* Left Panel - Branding */}
       <div className="relative hidden lg:flex flex-col justify-between bg-primary p-10 text-primary-foreground overflow-hidden">
         <div className="z-10 flex items-center gap-3">
           <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-cover bg-white rounded-full p-0.5" />
-          <h1 className="text-3xl font-display font-bold">Prism</h1>
+          <h1 className="text-3xl font-display font-bold">{t("app.name")}</h1>
         </div>
 
         <div className="z-10 max-w-lg space-y-6">
           <h2 className="text-4xl font-display font-bold leading-tight">
-            Bengaluru Prism.<br/>Civic Engagement Platform.
+            {language === 'en' ? (
+              <>Bengaluru Prism.<br/>Civic Engagement Platform.</>
+            ) : (
+              <>ಬೆಂಗಳೂರು ಪ್ರಿಸಮ್.<br/>ನಾಗರಿಕ ಸಹಭಾಗಿತ್ವದ ವೇದಿಕೆ.</>
+            )}
           </h2>
           <p className="text-lg text-primary-foreground/80">
-            A transparent lens into civic issues. Report problems, track resolutions, and help build a better city together.
+            {language === 'en' 
+              ? "A transparent lens into civic issues. Report problems, track resolutions, and help build a better city together."
+              : "ನಾಗರಿಕ ಸಮಸ್ಯೆಗಳ ಮೇಲೆ ಪಾರದರ್ಶಕ ದೃಷ್ಟಿ. ಸಮಸ್ಯೆಗಳನ್ನು ವರದಿ ಮಾಡಿ, ಪರಿಹಾರಗಳನ್ನು ಗಮನಿಸಿ ಮತ್ತು ಒಟ್ಟಾಗಿ ಉತ್ತಮ ನಗರವನ್ನು ನಿರ್ಮಿಸಲು ಸಹಾಯ ಮಾಡಿ."
+            }
           </p>
           <div className="flex gap-4 pt-4">
-            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm text-sm">
               <ShieldCheck className="h-5 w-5" />
-              <span className="font-medium">Secure</span>
+              <span className="font-medium">{language === 'en' ? 'Secure' : 'ಸುರಕ್ಷಿತ'}</span>
             </div>
-            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm text-sm">
               <Building2 className="h-5 w-5" />
-              <span className="font-medium">Direct to Govt</span>
+              <span className="font-medium">{language === 'en' ? 'Direct to Govt' : 'ನೇರವಾಗಿ ಸರ್ಕಾರಕ್ಕೆ'}</span>
             </div>
           </div>
         </div>
@@ -92,25 +101,25 @@ export default function AuthPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-3 justify-center mb-8">
             <img src={prismLogo} alt="Prism Logo" className="h-12 w-12 object-cover rounded-full border border-slate-200" />
-            <h1 className="text-3xl font-display font-bold text-slate-900">Prism</h1>
+            <h1 className="text-3xl font-display font-bold text-slate-900">{t("app.name")}</h1>
           </div>
 
           <Tabs defaultValue="citizen" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
-              <TabsTrigger value="citizen" className="text-base">Citizen Login</TabsTrigger>
-              <TabsTrigger value="admin" className="text-base">Official Login</TabsTrigger>
+              <TabsTrigger value="citizen" className={`${language === 'kn' ? 'text-sm' : 'text-base'}`}>{t("auth.citizen_login")}</TabsTrigger>
+              <TabsTrigger value="admin" className={`${language === 'kn' ? 'text-sm' : 'text-base'}`}>{t("auth.admin_login")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="citizen">
               <Card className="border-none shadow-xl">
                 <CardHeader className="space-y-1">
-                  <CardTitle className="text-2xl font-display">Welcome Back</CardTitle>
-                  <CardDescription>Enter your mobile number to access your account</CardDescription>
+                  <CardTitle className={`font-display ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("auth.welcome_back")}</CardTitle>
+                  <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.mobile_desc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleUserLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="mobile">Mobile Number</Label>
+                      <Label htmlFor="mobile" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.mobile")}</Label>
                       <Input 
                         id="mobile" 
                         placeholder="e.g. 9876543210" 
@@ -127,7 +136,7 @@ export default function AuthPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.password")}</Label>
                       <div className="relative">
                         <Input 
                           id="password" 
@@ -151,16 +160,16 @@ export default function AuthPage() {
                         </Button>
                       </div>
                     </div>
-                    <Button type="submit" className="w-full h-11 text-base" disabled={loginUser.isPending}>
-                      {loginUser.isPending ? "Logging in..." : "Login Securely"}
+                    <Button type="submit" className={`w-full h-11 ${language === 'kn' ? 'text-sm px-2' : 'text-base'}`} disabled={loginUser.isPending}>
+                      {loginUser.isPending ? t("common.loading") : t("auth.login")}
                     </Button>
                     <div className="text-center text-sm text-muted-foreground mt-4">
-                      Don't have an account?{" "}
+                      {t("auth.no_account")}{" "}
                       <span 
                         className="text-primary hover:underline cursor-pointer font-medium"
                         onClick={() => setLocation("/register")}
                       >
-                        Register Now
+                        {t("auth.register")}
                       </span>
                     </div>
                   </form>
@@ -171,13 +180,13 @@ export default function AuthPage() {
             <TabsContent value="admin">
               <Card className="border-none shadow-xl border-t-4 border-t-slate-800">
                 <CardHeader className="space-y-1">
-                  <CardTitle className="text-2xl font-display">Official Access</CardTitle>
-                  <CardDescription>Restricted area for municipal officers</CardDescription>
+                  <CardTitle className={`font-display ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("auth.admin_access")}</CardTitle>
+                  <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.admin_desc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="adminId">Officer ID</Label>
+                      <Label htmlFor="adminId" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.admin_id")}</Label>
                       <Input 
                         id="adminId" 
                         placeholder="e.g. ADM-2024-001" 
@@ -188,7 +197,7 @@ export default function AuthPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="adminPass">Password</Label>
+                      <Label htmlFor="adminPass" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.password")}</Label>
                       <div className="relative">
                         <Input 
                           id="adminPass" 
@@ -211,8 +220,8 @@ export default function AuthPage() {
                         </Button>
                       </div>
                     </div>
-                    <Button type="submit" className="w-full h-11 bg-slate-900 hover:bg-slate-800" disabled={loginAdmin.isPending}>
-                      {loginAdmin.isPending ? "Verifying..." : "Access Dashboard"}
+                    <Button type="submit" className={`w-full h-11 bg-slate-900 hover:bg-slate-800 ${language === 'kn' ? 'text-sm px-2' : 'text-base'}`} disabled={loginAdmin.isPending}>
+                      {loginAdmin.isPending ? t("common.loading") : t("auth.admin_login_btn")}
                     </Button>
                   </form>
                 </CardContent>

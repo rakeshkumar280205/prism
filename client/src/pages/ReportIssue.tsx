@@ -12,8 +12,10 @@ import { Upload, X, Image as ImageIcon, MapPin, AlertCircle, ThumbsUp } from "lu
 import { ImageModal } from "@/components/ImageModal";
 import { apiRequest } from "@/lib/queryClient";
 import { IssueWithVoteCount } from "@shared/schema";
+import { useI18n } from "@/lib/i18n";
 
 export default function ReportIssue() {
+  const { language, t } = useI18n();
   const createIssue = useCreateIssue();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -83,8 +85,8 @@ export default function ReportIssue() {
     try {
       await createIssue.mutateAsync(data);
       toast({
-        title: "Issue Reported",
-        description: "Your issue has been submitted successfully.",
+        title: t("report.success"),
+        description: t("report.success_desc"),
       });
       setLocation("/home");
     } catch (err: any) {
@@ -97,10 +99,10 @@ export default function ReportIssue() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
+    <div className={`max-w-2xl mx-auto py-8 ${language === 'kn' ? 'font-kannada' : ''}`}>
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-slate-900">Report an Issue</h1>
-        <p className="text-slate-500 mt-2">Provide details about the problem to help us resolve it faster.</p>
+        <h1 className={`font-display font-bold text-slate-900 ${language === 'kn' ? 'text-2xl' : 'text-3xl'}`}>{t("report.title")}</h1>
+        <p className={`text-slate-500 mt-2 ${language === 'kn' ? 'text-sm' : 'text-base'}`}>{t("report.subtitle")}</p>
       </div>
 
       <Card className="shadow-lg border-slate-200">
@@ -109,7 +111,7 @@ export default function ReportIssue() {
             
             {/* Title */}
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-base">Issue Title <span className="text-red-500">*</span></Label>
+              <Label htmlFor="title" className={language === 'kn' ? 'text-sm' : 'text-base'}>{t("report.issue_title")} <span className="text-red-500">*</span></Label>
               <Input 
                 id="title" 
                 placeholder="e.g. Large pothole on Main Street" 
@@ -123,14 +125,14 @@ export default function ReportIssue() {
             {/* Category & Ward */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="category">Category <span className="text-red-500">*</span></Label>
+                <Label htmlFor="category" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.category")} <span className="text-red-500">*</span></Label>
                 <Select 
                   value={formData.category} 
                   onValueChange={(v) => setFormData({...formData, category: v})}
                   required
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select Category" />
+                    <SelectValue placeholder={t("report.category")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Roads">Roads & Potholes</SelectItem>
@@ -144,7 +146,7 @@ export default function ReportIssue() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ward">Ward Number <span className="text-red-500">*</span></Label>
+                <Label htmlFor="ward" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.ward")} <span className="text-red-500">*</span></Label>
                 <Input 
                   id="ward" 
                   required 
@@ -168,7 +170,7 @@ export default function ReportIssue() {
 
             {/* Location */}
             <div className="space-y-2">
-              <Label htmlFor="address">Location / Address <span className="text-red-500">*</span></Label>
+              <Label htmlFor="address" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.address")} <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -184,7 +186,7 @@ export default function ReportIssue() {
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Detailed Description <span className="text-red-500">*</span></Label>
+              <Label htmlFor="description" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.description")} <span className="text-red-500">*</span></Label>
               <Textarea 
                 id="description" 
                 placeholder="Describe the issue in detail..." 
@@ -198,7 +200,7 @@ export default function ReportIssue() {
 
             {/* Image Upload */}
             <div className="space-y-2">
-              <Label>Attach Photo (Optional)</Label>
+              <Label className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.image")}</Label>
               
               {!previewUrl ? (
                 <div 
@@ -208,8 +210,8 @@ export default function ReportIssue() {
                   <div className="bg-blue-50 p-3 rounded-full mb-3">
                     <Upload className="h-6 w-6 text-primary" />
                   </div>
-                  <p className="font-medium text-slate-700">Click to upload image</p>
-                  <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 5MB</p>
+                  <p className={`font-medium text-slate-700 ${language === 'kn' ? 'text-sm' : ''}`}>{t("report.upload_click")}</p>
+                  <p className="text-xs text-slate-400 mt-1">{t("report.upload_help")}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -226,9 +228,9 @@ export default function ReportIssue() {
                     variant="destructive" 
                     size="sm" 
                     onClick={removeImage}
-                    className="w-full"
+                    className={`w-full ${language === 'kn' ? 'text-xs' : ''}`}
                   >
-                    <X className="h-4 w-4 mr-2" /> Remove Photo
+                    <X className="h-4 w-4 mr-2" /> {t("report.remove_photo")}
                   </Button>
                 </div>
               )}
@@ -247,8 +249,8 @@ export default function ReportIssue() {
                 <div className="flex items-start gap-3">
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-bold text-amber-800">Possible Similar Issues Found</h4>
-                    <p className="text-sm text-amber-700">These issues in Ward {formData.ward} might be the same as yours. Consider upvoting them instead of creating a new report.</p>
+                    <h4 className={`font-bold text-amber-800 ${language === 'kn' ? 'text-sm' : ''}`}>Possible Similar Issues Found</h4>
+                    <p className={`text-amber-700 ${language === 'kn' ? 'text-[10px]' : 'text-sm'}`}>These issues in Ward {formData.ward} might be the same as yours. Consider upvoting them instead of creating a new report.</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -272,11 +274,11 @@ export default function ReportIssue() {
             )}
 
             <div className="pt-4 flex gap-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setLocation("/home")}>
-                Cancel
+              <Button type="button" variant="outline" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} onClick={() => setLocation("/home")}>
+                {t("report.cancel")}
               </Button>
-              <Button type="submit" className="flex-1" disabled={createIssue.isPending}>
-                {createIssue.isPending ? "Submitting..." : "Submit Report"}
+              <Button type="submit" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} disabled={createIssue.isPending}>
+                {createIssue.isPending ? t("report.submitting") : t("report.submit")}
               </Button>
             </div>
 

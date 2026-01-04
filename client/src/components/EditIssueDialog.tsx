@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertIssueSchema } from "@shared/schema";
 import { z } from "zod";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 const editIssueSchema = insertIssueSchema.partial().extend({
   image: z.any().optional(),
@@ -25,6 +26,7 @@ interface EditIssueDialogProps {
 }
 
 export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: EditIssueDialogProps) {
+  const { language, t } = useI18n();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const { register, handleSubmit, formState: { errors }, control } = useForm<EditIssueForm>({
     resolver: zodResolver(editIssueSchema),
@@ -51,18 +53,20 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className={`sm:max-w-[500px] ${language === 'kn' ? 'font-kannada' : ''}`}>
         <DialogHeader>
-          <DialogTitle>Edit Issue</DialogTitle>
-          <DialogDescription>Update your issue details</DialogDescription>
+          <DialogTitle className={language === 'kn' ? 'text-lg' : ''}>{language === 'kn' ? 'ಸಮಸ್ಯೆ ತಿದ್ದುಪಡಿ' : 'Edit Issue'}</DialogTitle>
+          <DialogDescription className={language === 'kn' ? 'text-xs' : ''}>
+            {language === 'kn' ? 'ನಿಮ್ಮ ಸಮಸ್ಯೆಯ ವಿವರಗಳನ್ನು ನವೀಕರಿಸಿ' : 'Update your issue details'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-h-96 overflow-y-auto px-1">
           <div>
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className={language === 'kn' ? 'text-xs' : ''}>{t("report.issue_title")}</Label>
             <Input
               id="title"
-              placeholder="Issue title"
+              placeholder={language === 'kn' ? 'ಸಮಸ್ಯೆಯ ಶೀರ್ಷಿಕೆ' : 'Issue title'}
               {...register("title")}
               data-testid="input-edit-title"
             />
@@ -70,10 +74,10 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className={language === 'kn' ? 'text-xs' : ''}>{t("report.description")}</Label>
             <Textarea
               id="description"
-              placeholder="Detailed description"
+              placeholder={language === 'kn' ? 'ವಿವರವಾದ ವಿವರಣೆ' : 'Detailed description'}
               {...register("description")}
               data-testid="input-edit-description"
               className="resize-none"
@@ -82,14 +86,14 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div>
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category" className={language === 'kn' ? 'text-xs' : ''}>{t("report.category")}</Label>
             <Controller
               name="category"
               control={control}
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="category" data-testid="select-edit-category">
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t("report.category")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Roads">Roads</SelectItem>
@@ -105,11 +109,11 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div>
-            <Label htmlFor="ward">Ward Number (1-200)</Label>
+            <Label htmlFor="ward" className={language === 'kn' ? 'text-xs' : ''}>{t("report.ward")} (1-200)</Label>
             <Input
               id="ward"
               type="number"
-              placeholder="Ward number"
+              placeholder={t("report.ward")}
               min="1"
               max="200"
               {...register("ward")}
@@ -119,10 +123,10 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div>
-            <Label htmlFor="address">Address</Label>
+            <Label htmlFor="address" className={language === 'kn' ? 'text-xs' : ''}>{t("report.address")}</Label>
             <Input
               id="address"
-              placeholder="Specific location"
+              placeholder={t("report.address")}
               {...register("address")}
               data-testid="input-edit-address"
             />
@@ -130,7 +134,7 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div>
-            <Label htmlFor="image">Image (optional)</Label>
+            <Label htmlFor="image" className={language === 'kn' ? 'text-xs' : ''}>{t("report.image")}</Label>
             {issue?.image && (
               <div className="text-sm text-slate-600 mb-2">Current image: {issue.image}</div>
             )}
@@ -144,11 +148,11 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
           </div>
 
           <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} data-testid="button-cancel-edit">
-              Cancel
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving} data-testid="button-cancel-edit" className={language === 'kn' ? 'text-xs' : ''}>
+              {t("report.cancel")}
             </Button>
-            <Button type="submit" disabled={isSaving} data-testid="button-save-edit">
-              {isSaving ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={isSaving} data-testid="button-save-edit" className={language === 'kn' ? 'text-xs' : ''}>
+              {isSaving ? t("profile.saving") : t("profile.save")}
             </Button>
           </div>
         </form>

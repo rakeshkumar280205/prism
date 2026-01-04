@@ -12,6 +12,7 @@ import { useState } from "react";
 import { EditIssueDialog } from "@/components/EditIssueDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
+import { useI18n } from "@/lib/i18n";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function MyIssuesPage() {
+  const { language, t } = useI18n();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -84,10 +86,10 @@ export default function MyIssuesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${language === 'kn' ? 'font-kannada' : ''}`}>
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-display font-bold text-slate-900 mb-2">My Reported Issues</h1>
-        <p className="text-slate-600">Track the status of issues you've reported</p>
+        <h1 className={`font-display font-bold text-slate-900 mb-2 ${language === 'kn' ? 'text-2xl' : 'text-3xl'}`}>{t("my_issues.title")}</h1>
+        <p className={`text-slate-600 ${language === 'kn' ? 'text-sm' : ''}`}>{t("my_issues.subtitle")}</p>
       </div>
 
       {/* Controls */}
@@ -95,7 +97,7 @@ export default function MyIssuesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search by title or description..." 
+            placeholder={t("my_issues.search")} 
             className="pl-9" 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -104,13 +106,13 @@ export default function MyIssuesPage() {
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
-            <SelectValue placeholder="Filter Status" />
+            <SelectValue placeholder={t("common.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Resolved">Resolved</SelectItem>
+            <SelectItem value="all">{t("common.all")} {t("common.status")}</SelectItem>
+            <SelectItem value="Pending">{t("analytics.pending")}</SelectItem>
+            <SelectItem value="In Progress">{t("analytics.progress")}</SelectItem>
+            <SelectItem value="Resolved">{t("analytics.resolved")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -118,10 +120,10 @@ export default function MyIssuesPage() {
       {/* Issues Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
-          <p className="col-span-full text-center py-10 text-slate-500">Loading your issues...</p>
+          <p className="col-span-full text-center py-10 text-slate-500">{t("common.loading")}</p>
         ) : filteredIssues?.length === 0 ? (
-          <p className="col-span-full text-center py-10 text-slate-500">
-            {issues?.length === 0 ? "You haven't reported any issues yet." : "No issues match your filters."}
+          <p className={`col-span-full text-center py-10 text-slate-500 ${language === 'kn' ? 'text-sm' : ''}`}>
+            {issues?.length === 0 ? t("my_issues.no_issues") : t("my_issues.no_match")}
           </p>
         ) : (
           filteredIssues?.map((issue) => (
@@ -153,19 +155,18 @@ export default function MyIssuesPage() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogTitle>{language === 'kn' ? 'ನೀವು ಖಚಿತವಾಗಿದ್ದೀರಾ?' : 'Are you absolutely sure?'}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your reported issue
-                        "{issue.title}" and remove it from the system.
+                        {language === 'kn' ? 'ಈ ಕ್ರಮವನ್ನು ರದ್ದುಗೊಳಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.' : 'This action cannot be undone.'}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{t("report.cancel")}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={() => handleDelete(issue.id)}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Delete
+                        {language === 'kn' ? 'ಅಳಿಸಿ' : 'Delete'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
