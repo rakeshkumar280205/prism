@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     if (admin?.role === "SUPER_ADMIN") {
       return "Oversee all reported issues across all wards";
     }
-    return issues && issues.length > 0 ? `Managing Ward ${issues[0].ward}` : "Manage reported issues and update status";
+    return admin?.ward ? `Managing Ward ${admin.ward}` : "Manage reported issues and update status";
   };
 
   return (
