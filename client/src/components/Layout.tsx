@@ -69,46 +69,46 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="container flex h-16 items-center justify-between px-4 md:px-8">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 shrink-0">
             <Link href={user ? "/home" : (admin ? "/admin/dashboard" : "/")} className="flex items-center gap-2">
               <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-cover rounded-full border border-slate-200" />
-              <span className="font-display font-bold text-xl tracking-tight text-slate-900">
+              <span className="font-display font-bold text-xl tracking-tight text-slate-900 whitespace-nowrap">
                 {t("app.name")}
               </span>
             </Link>
           </div>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6">
-            <nav className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 flex-1 justify-end">
+            <nav className="flex items-center gap-4 lg:gap-6 overflow-hidden">
               {navItems.map((item) => (
                 <Link 
                   key={item.href} 
                   href={item.href}
-                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary
+                  className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary whitespace-nowrap
                     ${location === item.href ? "text-primary" : "text-muted-foreground"}`}
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
                 </Link>
               ))}
             </nav>
             <div className="h-6 w-px bg-slate-200 mx-2" />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 shrink-0">
               <LanguageToggle />
               {(user || admin) && (
                 <>
-                  <span className="text-sm text-slate-600 font-medium hidden lg:block">
+                  <span className="text-sm text-slate-600 font-medium hidden lg:block truncate max-w-[150px]">
                     {t("nav.hi")}, {user?.name || admin?.name}
                   </span>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleLogout}
-                    className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                    className="text-slate-500 hover:text-red-600 hover:bg-red-50 shrink-0"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
-                    {t("nav.logout")}
+                    <span className="hidden sm:inline">{t("nav.logout")}</span>
                   </Button>
                 </>
               )}
