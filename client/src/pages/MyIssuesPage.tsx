@@ -93,7 +93,7 @@ export default function MyIssuesPage() {
       </div>
 
       {/* Controls */}
-      <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row gap-4">
+      <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row gap-4 sticky top-16 md:top-20 z-30">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -105,7 +105,7 @@ export default function MyIssuesPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
+          <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-status-filter">
             <SelectValue placeholder={t("common.status")} />
           </SelectTrigger>
           <SelectContent>

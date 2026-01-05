@@ -72,15 +72,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <Link href={user ? "/home" : (admin ? "/admin/dashboard" : "/")} className="flex items-center gap-2">
               <img src={prismLogo} alt="Prism Logo" className="h-10 w-10 object-cover rounded-full border border-slate-200" />
-              <span className="font-display font-bold text-xl tracking-tight text-slate-900">
+              <span className="font-display font-bold text-lg md:text-xl tracking-tight text-slate-900 whitespace-nowrap">
                 {t("app.name")}
               </span>
             </Link>
           </div>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6">
-            <nav className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-4 lg:gap-6 overflow-x-auto no-scrollbar">
+            <nav className="flex items-center gap-4 lg:gap-6">
               {navItems.map((item) => (
                 <Link 
                   key={item.href} 

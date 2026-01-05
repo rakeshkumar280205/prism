@@ -60,8 +60,8 @@ export default function Home() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-xl border shadow-sm sticky top-20 z-30">
-        <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white p-4 rounded-xl border shadow-sm sticky top-16 md:top-20 z-30">
+        <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -72,9 +72,9 @@ export default function Home() {
             />
           </div>
           
-          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar items-center">
+          <div className="flex flex-wrap lg:flex-nowrap gap-2 items-center">
             <Select value={filters.ward} onValueChange={(v) => setFilters({...filters, ward: v})}>
-              <SelectTrigger className="w-[140px] bg-slate-50">
+              <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("common.ward")} />
               </SelectTrigger>
               <SelectContent>
@@ -86,7 +86,7 @@ export default function Home() {
             </Select>
 
             <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
-              <SelectTrigger className="w-[140px] bg-slate-50">
+              <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("common.status")} />
               </SelectTrigger>
               <SelectContent>
@@ -98,7 +98,7 @@ export default function Home() {
             </Select>
 
             <Select value={filters.category} onValueChange={(v) => setFilters({...filters, category: v})}>
-              <SelectTrigger className="w-[150px] bg-slate-50">
+              <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("report.category")} />
               </SelectTrigger>
               <SelectContent>
@@ -111,31 +111,33 @@ export default function Home() {
               </SelectContent>
             </Select>
 
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => refetch()} 
-              className="bg-slate-50 shrink-0"
-              data-testid="button-refresh-issues"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-
-            {(search || filters.ward !== "all" || filters.category !== "all" || filters.status !== "all") && (
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button 
                 variant="outline" 
-                size="sm"
-                onClick={() => {
-                  setFilters({ ward: 'all', category: 'all', status: 'all' });
-                  setSearch('');
-                  refetch();
-                }}
-                className={`bg-slate-50 shrink-0 ${language === 'kn' ? 'text-[10px] px-2' : 'text-xs'}`}
-                data-testid="button-clear-all-filters"
+                size="icon" 
+                onClick={() => refetch()} 
+                className="bg-slate-50 shrink-0"
+                data-testid="button-refresh-issues"
               >
-                {t("home.clear_filters")}
+                <RefreshCw className="h-4 w-4" />
               </Button>
-            )}
+
+              {(search || filters.ward !== "all" || filters.category !== "all" || filters.status !== "all") && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setFilters({ ward: 'all', category: 'all', status: 'all' });
+                    setSearch('');
+                    refetch();
+                  }}
+                  className={`bg-slate-50 flex-1 sm:flex-initial ${language === 'kn' ? 'text-[10px] px-2' : 'text-xs'}`}
+                  data-testid="button-clear-all-filters"
+                >
+                  {t("home.clear_filters")}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
