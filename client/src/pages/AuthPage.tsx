@@ -181,17 +181,7 @@ export default function AuthPage() {
               <Card className="border-none shadow-xl border-t-4 border-t-slate-800">
                 <CardHeader className="space-y-1">
                   <CardTitle className={`font-display ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("auth.admin_access")}</CardTitle>
-                  <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>
-                    {admin ? (
-                      <span className="text-primary font-medium">
-                        {language === 'en' 
-                          ? `Managing Ward: ${admin.ward}` 
-                          : `ನಿರ್ವಹಿಸುತ್ತಿರುವ ವಾರ್ಡ್: ${admin.ward}`}
-                      </span>
-                    ) : (
-                      t("auth.admin_desc")
-                    )}
-                  </CardDescription>
+                  <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.admin_desc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleAdminLogin} className="space-y-4">
