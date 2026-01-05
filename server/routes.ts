@@ -473,23 +473,19 @@ export async function registerRoutes(
   });
 
   // Seed Super Admin if not exists
-  try {
-    const superAdmin = await storage.getAdminByAdminId("superadmin");
-    if (!superAdmin) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
-      await storage.createAdmin({
-        adminId: "superadmin",
-        password: hashedPassword,
-        name: "Super Administrator",
-        role: "SUPER_ADMIN",
-        wardAssigned: "All",
-        isActive: true,
-        createdBy: null
-      });
-      console.log("Super Admin seeded: superadmin / admin123");
-    }
-  } catch (err) {
-    console.error("Failed to seed Super Admin:", err);
+  const superAdmin = await storage.getAdminByAdminId("superadmin");
+  if (!superAdmin) {
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await storage.createAdmin({
+      adminId: "superadmin",
+      password: hashedPassword,
+      name: "Super Administrator",
+      role: "SUPER_ADMIN",
+      wardAssigned: "All",
+      isActive: true,
+      createdBy: null
+    });
+    console.log("Super Admin seeded: superadmin / admin123");
   }
 
   // Auto-delete resolved issues every 24 hours
