@@ -53,7 +53,16 @@ export default function ReportIssue() {
 
     const timer = setTimeout(checkDuplicates, 500);
     return () => clearTimeout(timer);
-  }, [formData.title, formData.category, formData.ward]);
+  }, [formData.title, formData.category, formData.ward, apiRequest]);
+
+  // Cleanup blob URLs on component unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,6 +70,10 @@ export default function ReportIssue() {
       if (file.size > 5 * 1024 * 1024) {
         toast({ title: "File too large", description: "Max size is 5MB", variant: "destructive" });
         return;
+      }
+      // Revoke old preview URL before creating a new one to prevent memory leaks
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
       setImage(file);
       const url = URL.createObjectURL(file);
@@ -77,7 +90,7 @@ export default function ReportIssue() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => data.append(key, value));
     if (image) data.append("image", image);
@@ -108,15 +121,15 @@ export default function ReportIssue() {
       <Card className="shadow-lg border-slate-200">
         <CardContent className="p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title" className={language === 'kn' ? 'text-sm' : 'text-base'}>{t("report.issue_title")} <span className="text-red-500">*</span></Label>
-              <Input 
-                id="title" 
-                placeholder="e.g. Large pothole on Main Street" 
+              <Input
+                id="title"
+                placeholder="e.g. Large pothole on Main Street"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
                 className="h-12"
               />
@@ -126,9 +139,9 @@ export default function ReportIssue() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="category" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.category")} <span className="text-red-500">*</span></Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(v) => setFormData({...formData, category: v})}
+                <Select
+                  value={formData.category}
+                  onValueChange={(v) => setFormData({ ...formData, category: v })}
                   required
                 >
                   <SelectTrigger className="h-11">
@@ -147,9 +160,9 @@ export default function ReportIssue() {
 
               <div className="space-y-2">
                 <Label htmlFor="ward" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.ward")} <span className="text-red-500">*</span></Label>
-                <Input 
-                  id="ward" 
-                  required 
+                <Input
+                  id="ward"
+                  required
                   type="number"
                   min="1"
                   max="200"
@@ -158,7 +171,7 @@ export default function ReportIssue() {
                     const value = e.target.value;
                     const num = value ? parseInt(value) : "";
                     if (num === "" || (num >= 1 && num <= 200)) {
-                      setFormData({...formData, ward: String(num === "" ? "" : num)});
+                      setFormData({ ...formData, ward: String(num === "" ? "" : num) });
                     }
                   }}
                   placeholder="Enter ward number (1-200)"
@@ -173,11 +186,11 @@ export default function ReportIssue() {
               <Label htmlFor="address" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.address")} <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  id="address" 
-                  placeholder="Enter precise location or landmark" 
+                <Input
+                  id="address"
+                  placeholder="Enter precise location or landmark"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   required
                   className="pl-9 h-11"
                 />
@@ -187,12 +200,12 @@ export default function ReportIssue() {
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.description")} <span className="text-red-500">*</span></Label>
-              <Textarea 
-                id="description" 
-                placeholder="Describe the issue in detail..." 
+              <Textarea
+                id="description"
+                placeholder="Describe the issue in detail..."
                 rows={4}
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 required
                 className="resize-none"
               />
@@ -201,9 +214,9 @@ export default function ReportIssue() {
             {/* Image Upload */}
             <div className="space-y-2">
               <Label className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("report.image")}</Label>
-              
+
               {!previewUrl ? (
-                <div 
+                <div
                   className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 hover:border-primary/50 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
@@ -215,7 +228,7 @@ export default function ReportIssue() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <ImageModal 
+                  <ImageModal
                     src={previewUrl}
                     alt="Preview"
                   >
@@ -223,10 +236,10 @@ export default function ReportIssue() {
                       <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   </ImageModal>
-                  <Button 
+                  <Button
                     type="button"
-                    variant="destructive" 
-                    size="sm" 
+                    variant="destructive"
+                    size="sm"
                     onClick={removeImage}
                     className={`w-full ${language === 'kn' ? 'text-xs' : ''}`}
                   >
@@ -234,12 +247,12 @@ export default function ReportIssue() {
                   </Button>
                 </div>
               )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleImageChange} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageChange}
               />
             </div>
 

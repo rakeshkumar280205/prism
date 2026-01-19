@@ -4,62 +4,162 @@ import { storage } from "./storage";
 import { api, errorSchemas } from "@shared/routes";
 import { z } from "zod";
 import session from "express-session";
+import MongoStore from "connect-mongo";
+import mongoose from "mongoose";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { Server as SocketIOServer } from "socket.io";
 import express from "express";
+import rateLimit from "express-rate-limit";
+import { upload } from "./middleware/upload";
+import { uploadToCloudinary } from "./utils/uploadToCloudinary";
+import { getCloudinary } from "./utils/cloudinary";
+import crypto from "crypto";
 
-// Ensure uploads directory exists
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+// Helper: Extract Cloudinary publicId from URL
+function extractCloudinaryPublicId(url: string): string | null {
+  try {
+    // Cloudinary URLs format: https://res.cloudinary.com/<cloud>/image/upload/v<version>/<folder>/<publicId>.<ext>
+    const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-z]+$/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
-// Multer config
-const storageConfig = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storageConfig });
+function isBcryptHash(value: string): boolean {
+  return /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value);
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
-): Promise<Server> {
+): Promise<{ httpServer: Server; io: SocketIOServer; sessionStore: any }> {
+  // Trust proxy in production for secure cookies behind reverse proxies
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
+  // Health monitoring state
+  const healthState = {
+    isSessionStoreHealthy: true,
+    lastSessionError: null as Error | null,
+  };
+
+  // Lightweight health check for ops/monitoring
+  app.get("/health", async (_req, res) => {
+    const checks = [];
+    const timestamp = new Date().toISOString();
+
+    // Check session store health
+    if (!healthState.isSessionStoreHealthy) {
+      checks.push({ component: "session_store", status: "unhealthy", error: healthState.lastSessionError?.message });
+    }
+
+    // Check MongoDB connectivity
+    try {
+      const dbState = mongoose.connection.readyState;
+      if (dbState !== 1) { // 1 = connected
+        checks.push({ component: "mongodb", status: "unhealthy", error: `Connection state: ${dbState}` });
+      }
+    } catch (err) {
+      checks.push({ component: "mongodb", status: "unhealthy", error: "Connection check failed" });
+    }
+
+    // Return 503 if any checks failed
+    if (checks.length > 0) {
+      return res.status(503).json({ status: "unhealthy", timestamp, checks });
+    }
+
+    res.json({ status: "ok", timestamp });
+  });
+
   // Socket.IO Setup
   const io = new SocketIOServer(httpServer, {
     path: "/socket.io",
     cors: {
-      origin: "*",
+      origin: process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL || "http://localhost:5173" // Restrict to known frontend in production
+        : true, // Allow all origins in development
+      credentials: true,
     },
   });
 
   io.on("connection", (socket) => {
-    console.log("New client connected", socket.id);
-    socket.on("disconnect", () => {
-      console.log("Client disconnected", socket.id);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("New client connected", socket.id);
+    }
+
+    // Handle socket errors to prevent silent failures
+    socket.on("error", (error) => {
+      console.error(`Socket error [${socket.id}]:`, error);
+    });
+
+    socket.on("disconnect", (reason) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`Client disconnected [${socket.id}] reason: ${reason}`);
+      }
     });
   });
 
-  // Serve static files from uploads
-  app.use("/uploads", express.static(uploadDir));
-
   // Session Setup
+  const isProduction = process.env.NODE_ENV === "production";
+  const sessionMaxAgeMs = 1000 * 60 * 60 * 24; // 24h
+
+  // SESSION_SECRET is required; generate random one for development if not provided
+  const sessionSecret = process.env.SESSION_SECRET || (() => {
+    if (isProduction) {
+      throw new Error("FATAL: SESSION_SECRET environment variable is required in production");
+    }
+    // Development: generate a temporary random secret (session data won't persist across restarts, which is fine for dev)
+    return crypto.randomBytes(32).toString("hex");
+  })();
+
+  const sessionStore = MongoStore.create({
+    client: mongoose.connection.getClient() as any,
+    ttl: sessionMaxAgeMs / 1000,
+  });
+
+  sessionStore.on("error", (err) => {
+    console.error("Session store error:", err.message);
+    healthState.isSessionStoreHealthy = false;
+    healthState.lastSessionError = err;
+
+    // Log stack trace only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Session store stack:", err.stack);
+    }
+  });
+
+  // Monitor session store ready state
+  sessionStore.on("connect", () => {
+    healthState.isSessionStoreHealthy = true;
+    healthState.lastSessionError = null;
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Session store connected and healthy");
+    }
+  });
+
+  sessionStore.on("disconnect", () => {
+    console.error("Session store disconnected - sessions will fail");
+    healthState.isSessionStoreHealthy = false;
+    healthState.lastSessionError = new Error("Session store disconnected");
+  });
+
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "secret_key_change_me",
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false }, // Set to true in production with HTTPS
+      store: sessionStore,
+      cookie: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isProduction,
+        maxAge: sessionMaxAgeMs,
+      },
     })
   );
 
@@ -72,7 +172,7 @@ export async function registerRoutes(
     "user-local",
     new LocalStrategy({ usernameField: "mobile" }, async (mobile, password, done) => {
       try {
-        const user = await storage.getUserByMobile(mobile);
+        const user = await storage.getUserByMobileForAuth(mobile);
         if (!user) return done(null, false, { message: "User not found" });
         if (!(await bcrypt.compare(password, user.password))) {
           return done(null, false, { message: "Incorrect password" });
@@ -89,7 +189,7 @@ export async function registerRoutes(
     "admin-local",
     new LocalStrategy({ usernameField: "adminId" }, async (adminId, password, done) => {
       try {
-        const admin = await storage.getAdminByAdminId(adminId);
+        const admin = await storage.getAdminByAdminIdForAuth(adminId);
         if (!admin) return done(null, false, { message: "Admin not found" });
         if (!(await bcrypt.compare(password, admin.password))) {
           return done(null, false, { message: "Incorrect password" });
@@ -123,32 +223,74 @@ export async function registerRoutes(
 
   // === Auth Routes ===
 
-  app.post(api.auth.loginUser.path, (req, res, next) => {
+  // Rate limiter for login endpoints (5 attempts per minute per IP)
+  const loginLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: { message: "Too many login attempts, please try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Rate limiter for image uploads (10 uploads per hour per IP)
+  const imageUploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    message: { message: "Too many image uploads. Please try later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post(api.auth.loginUser.path, loginLimiter, (req, res, next) => {
     passport.authenticate("user-local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: info?.message || "Login failed" });
-      req.logIn(user, (err) => {
-        if (err) return next(err);
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Session persistence error during login:", loginErr);
+          return res.status(500).json({ message: "Session creation failed. Please try again." });
+        }
         return res.json(user);
       });
     })(req, res, next);
   });
 
-  app.post(api.auth.loginAdmin.path, (req, res, next) => {
+  app.post(api.auth.loginAdmin.path, loginLimiter, (req, res, next) => {
     passport.authenticate("admin-local", (err: any, admin: any, info: any) => {
       if (err) return next(err);
       if (!admin) return res.status(401).json({ message: info?.message || "Login failed" });
-      req.logIn(admin, (err) => {
-        if (err) return next(err);
+      req.logIn(admin, (loginErr) => {
+        if (loginErr) {
+          console.error("Session persistence error during admin login:", loginErr);
+          return res.status(500).json({ message: "Session creation failed. Please try again." });
+        }
         return res.json(admin);
       });
     })(req, res, next);
   });
 
   app.post(api.auth.logout.path, (req, res) => {
-    req.logout((err) => {
-      if (err) return res.status(500).json({ message: "Logout failed" });
-      res.json({ message: "Logged out" });
+    req.logout((logoutErr) => {
+      if (logoutErr) {
+        console.error("Logout error (passport):", logoutErr);
+        // Continue to destroy session even if passport logout fails
+      }
+
+      if (req.session) {
+        req.session.destroy((sessionErr) => {
+          if (sessionErr) {
+            console.error("Session destruction error:", sessionErr);
+            // Log but still indicate logout success to prevent client retry loops
+            // Session will auto-expire on server side
+          }
+          // Clear session cookie from client
+          res.clearCookie("connect.sid", { path: "/" });
+          res.json({ message: "Logged out" });
+        });
+      } else {
+        res.clearCookie("connect.sid", { path: "/" });
+        res.json({ message: "Logged out" });
+      }
     });
   });
 
@@ -182,6 +324,14 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {
       const input = api.users.updateProfile.input.parse(req.body);
+
+      // Hash password if provided and not already hashed
+      if (input.password) {
+        if (!isBcryptHash(input.password)) {
+          input.password = await bcrypt.hash(input.password, 10);
+        }
+      }
+
       const user = await storage.updateUser((req.user as any).id, input);
       res.json(user);
     } catch (err) {
@@ -201,7 +351,7 @@ export async function registerRoutes(
 
       const hashedPassword = await bcrypt.hash(input.password, 10);
       const admin = await storage.createAdmin({ ...input, password: hashedPassword, createdBy: (req.user as any).id });
-      
+
       await storage.createAuditLog({
         actorId: (req.user as any).id,
         actorType: "admin",
@@ -220,14 +370,24 @@ export async function registerRoutes(
 
   app.get(api.admins.list.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
-    const admins = await storage.listAdmins();
-    res.json(admins);
+    try {
+      const admins = await storage.listAdmins();
+      res.json(admins);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch admins" });
+    }
   });
 
   app.get("/api/audit-logs", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
-    const logs = await storage.listAuditLogs();
-    res.json(logs);
+    try {
+      const logs = await storage.listAuditLogs();
+      res.json(logs);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
   });
 
   app.put(api.admins.update.path, async (req, res) => {
@@ -235,12 +395,14 @@ export async function registerRoutes(
     try {
       const adminId = Number(req.params.id);
       const input = api.admins.update.input.parse(req.body);
-      
+
       // Hash password if provided
       if (input.password) {
-        input.password = await bcrypt.hash(input.password, 10);
+        if (!isBcryptHash(input.password)) {
+          input.password = await bcrypt.hash(input.password, 10);
+        }
       }
-      
+
       const admin = await storage.updateAdmin(adminId, input);
       res.json(admin);
     } catch (err) {
@@ -256,7 +418,7 @@ export async function registerRoutes(
       const admin = await storage.getAdmin(adminId);
       if (!admin) return res.status(404).json({ message: "Admin not found" });
       if (admin.role === "SUPER_ADMIN") return res.status(403).json({ message: "Cannot delete Super Admin" });
-      
+
       await storage.deleteAdmin(adminId);
 
       await storage.createAuditLog({
@@ -278,36 +440,48 @@ export async function registerRoutes(
   // === Issue Routes ===
 
   app.get(api.issues.list.path, async (req, res) => {
-    const filters = req.query as { ward?: string; status?: string; category?: string; createdBy?: string };
-    const user = req.user as any;
-    const userId = req.isAuthenticated() && user.type === 'user' ? user.id : undefined;
-    
-    const parsedFilters: any = {
-      status: filters.status,
-      category: filters.category,
-      createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
-    };
+    try {
+      const filters = req.query as { ward?: string; status?: string; category?: string; createdBy?: string };
+      const user = req.user as any;
+      const userId = req.isAuthenticated() && user.type === 'user' ? user.id : undefined;
 
-    // Ward restriction logic
-    if (req.isAuthenticated() && user.type === "admin") {
-      if (user.role !== "SUPER_ADMIN") {
-        // Regular admins are restricted to their assigned ward
-        parsedFilters.ward = user.wardAssigned;
-      } else if (filters.ward) {
-        // Super admins can filter by any ward
+      const parsedFilters: any = {
+        status: filters.status,
+        category: filters.category,
+        createdBy: filters.createdBy ? parseInt(filters.createdBy) : undefined,
+      };
+
+      // Ward restriction logic
+      if (req.isAuthenticated() && user.type === "admin") {
+        if (user.role !== "SUPER_ADMIN") {
+          // Regular admins are restricted to their assigned ward; deny if missing to avoid over-broad queries
+          if (!user.wardAssigned) {
+            return res.status(403).json({ message: "Assigned ward is required for admin access" });
+          }
+
+          parsedFilters.ward = user.wardAssigned.toString();
+        } else if (filters.ward) {
+          // Super admins can filter by any ward
+          parsedFilters.ward = filters.ward;
+        }
+      } else {
+        // Users/Public can filter by ward if provided
         parsedFilters.ward = filters.ward;
       }
-    } else {
-      // Users/Public can filter by ward if provided
-      parsedFilters.ward = filters.ward;
-    }
 
-    const issues = await (storage as any).getIssues(parsedFilters, userId);
-    res.json(issues);
+      const issues = await (storage as any).getIssues(parsedFilters, userId);
+      res.json(issues);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch issues" });
+    }
   });
 
-  app.post("/api/issues/check-duplicates", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+  app.post("/api/issues/check-duplicates", imageUploadLimiter, async (req, res) => {
+    // Only authenticated users can check duplicates (prevents anonymous abuse)
+    if (!req.isAuthenticated() || (req.user as any).type !== "user") {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     try {
       const { ward, category, title } = req.body;
       if (!ward || !category || !title) return res.status(400).json({ message: "Missing required fields" });
@@ -318,20 +492,78 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.issues.create.path, upload.single("image"), async (req, res) => {
+  app.post(api.issues.create.path, upload.single("image"), imageUploadLimiter, async (req, res) => {
+    console.log("[UPLOAD:START] POST /api/issues reached", { hasFile: !!req.file, fileName: req.file?.originalname });
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {
+      // Create issue first (without image)
       const issueData: any = {
         title: req.body.title,
         description: req.body.description,
         category: req.body.category,
         ward: req.body.ward,
         address: req.body.address,
-        image: req.file ? req.file.filename : undefined,
+        image: undefined,
       };
-      
+
+      const requiredFields = ["title", "description", "category", "ward", "address"] as const;
+      const missingField = requiredFields.find((field) => typeof issueData[field] !== "string" || issueData[field].trim() === "");
+      if (missingField) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Validate ward range (1-200) - ensure valid integer within valid range
+      const wardNum = parseInt(issueData.ward, 10);
+      if (isNaN(wardNum) || !Number.isInteger(wardNum) || wardNum < 1 || wardNum > 200) {
+        return res.status(400).json({ message: "Ward must be an integer between 1 and 200" });
+      }
+
       const issue = await storage.createIssue({ ...issueData, createdBy: (req.user as any).id });
-      io.emit("issue:new", issue); // Real-time
+
+      // Upload image to Cloudinary if provided (after issue creation to get issueId)
+      if (req.file) {
+        console.log("[UPLOAD:CLOUDINARY_INVOKE] Calling uploadToCloudinary", { issueId: issue.id, fileSize: req.file.buffer.length });
+        try {
+          const uploadResult = await uploadToCloudinary(req.file.buffer, { issueId: issue.id });
+          console.log("[UPLOAD:CLOUDINARY_SUCCESS] Upload completed", { url: uploadResult.url, publicId: uploadResult.publicId });
+          // Update issue with image URL
+          const updatedIssue = await storage.updateIssue(issue.id, { image: uploadResult.url });
+          if (!updatedIssue) return res.status(404).json({ message: "Issue not found" });
+          io.emit("issue:new", { id: updatedIssue.id }); // Real-time (id-only to avoid leaking other wards)
+          res.status(201).json(updatedIssue);
+          return;
+        } catch (uploadError) {
+          const errorMsg = uploadError instanceof Error ? uploadError.message : String(uploadError);
+          console.error("[UPLOAD:CLOUDINARY_ERROR] Upload failed", { error: errorMsg, issueId: issue.id });
+          // Image upload failed - rollback by deleting the created issue to maintain consistency
+          try {
+            await storage.deleteIssue(issue.id);
+            console.log("[UPLOAD:ROLLBACK_SUCCESS] Issue deleted after upload failure", { issueId: issue.id });
+          } catch (deleteErr) {
+            console.error("CRITICAL: Failed to delete issue after image upload failure:", deleteErr);
+          }
+
+          const errorMessage = errorMsg;
+          let message = "Image upload failed";
+          let statusCode = 400;
+
+          if (errorMessage === "Image dimensions too large") {
+            message = "Image dimensions too large";
+          } else if (errorMessage === "Image service unavailable") {
+            message = "Image service unavailable";
+            statusCode = 503;
+          } else if (errorMessage === "Image upload timeout") {
+            message = "Image upload timeout";
+            statusCode = 503;
+          }
+
+          // Return error without emitting socket event (issue was rolled back)
+          return res.status(statusCode).json({ message });
+        }
+      }
+
+      io.emit("issue:new", { id: issue.id }); // Real-time (id-only to avoid leaking other wards)
+      console.log("[UPLOAD:NO_IMAGE] No image provided, issue created without image", { issueId: issue.id });
       res.status(201).json(issue);
     } catch (err) {
       console.error(err);
@@ -345,15 +577,22 @@ export async function registerRoutes(
       const user = (req.user as any);
       const issueId = Number(req.params.id);
       const issue = await storage.getIssue(issueId);
-      
+
       if (!issue) return res.status(404).json({ message: "Issue not found" });
-      
+
       // Admin ward restriction
       if (user.role !== "SUPER_ADMIN" && issue.ward !== user.wardAssigned) {
         return res.status(403).json({ message: "You can only update issues in your assigned ward" });
       }
 
       const { status } = req.body;
+
+      // Validate status: only allow known values
+      const allowedStatuses = ["Pending", "In Progress", "Resolved"];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Allowed values: Pending, In Progress, Resolved" });
+      }
+
       const updatedIssue = await storage.updateIssueStatus(issueId, status);
 
       await storage.createAuditLog({
@@ -366,14 +605,14 @@ export async function registerRoutes(
         details: `Updated issue status to ${status}`,
       });
 
-      io.emit("issue:update", updatedIssue); // Real-time
+      io.emit("issue:update", { id: updatedIssue.id }); // Real-time (id-only)
       res.json(updatedIssue);
     } catch (err) {
       res.status(500).json({ message: "Update failed" });
     }
   });
 
-  app.patch(api.issues.update.path, upload.single("image"), async (req, res) => {
+  app.patch(api.issues.update.path, upload.single("image"), imageUploadLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {
       const issueId = Number(req.params.id);
@@ -381,17 +620,71 @@ export async function registerRoutes(
       if (!issue) return res.status(404).json({ message: "Issue not found" });
       if (issue.createdBy !== (req.user as any).id) return res.status(403).json({ message: "Can only edit your own issues" });
 
+      if (req.body && req.body.createdBy !== undefined) {
+        delete req.body.createdBy;
+      }
+
+      // Store old image URL for cleanup (if being replaced)
+      const oldImageUrl = issue.image;
+
       const updates: any = {};
       if (req.body.title !== undefined) updates.title = req.body.title;
       if (req.body.description !== undefined) updates.description = req.body.description;
       if (req.body.category !== undefined) updates.category = req.body.category;
       if (req.body.ward !== undefined) updates.ward = req.body.ward;
       if (req.body.address !== undefined) updates.address = req.body.address;
-      if (req.file) updates.image = req.file.filename;
+      // Prevent ownership changes
+      if (updates.createdBy !== undefined) delete updates.createdBy;
+
+      // Handle optional image upload to Cloudinary
+      if (req.file) {
+        try {
+          const uploadResult = await uploadToCloudinary(req.file.buffer, { issueId });
+          updates.image = uploadResult.url;
+        } catch (uploadError) {
+          console.error("Cloudinary upload failed:", uploadError);
+          const errorMessage = uploadError instanceof Error ? uploadError.message : "";
+          let message = "Image upload failed";
+          let statusCode = 400;
+
+          if (errorMessage === "Image dimensions too large") {
+            message = "Image dimensions too large";
+          } else if (errorMessage === "Image service unavailable") {
+            message = "Image service unavailable";
+            statusCode = 503;
+          } else if (errorMessage === "Image upload timeout") {
+            message = "Image upload timeout";
+            statusCode = 503;
+          }
+
+          return res.status(statusCode).json({ message });
+        }
+      }
 
       const updated = await storage.updateIssue(issueId, updates);
-      io.emit("issue:update", updated); // Real-time
+      if (!updated) return res.status(404).json({ message: "Issue not found" });
+
+      io.emit("issue:update", { id: updated?.id }); // Real-time (id-only)
       res.json(updated);
+
+      // Cleanup old Cloudinary image after response sent (prevents orphaned resources)
+      if (oldImageUrl && req.file) {
+        const oldPublicId = extractCloudinaryPublicId(oldImageUrl);
+        if (oldPublicId) {
+          // Fire-and-forget cleanup with better error handling
+          (async () => {
+            try {
+              const cloudinary = getCloudinary();
+              await cloudinary.uploader.destroy(oldPublicId);
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : String(err);
+              console.warn(`[Cleanup] Old image cleanup failed for ${oldPublicId}: ${errorMsg}`);
+            }
+          })().catch((err) => {
+            console.error("[Cleanup] Unexpected error in image cleanup:", err);
+          });
+        }
+      }
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Update failed" });
@@ -404,18 +697,18 @@ export async function registerRoutes(
       const issueId = Number(req.params.id);
       const issue = await storage.getIssue(issueId);
       if (!issue) return res.status(404).json({ message: "Issue not found" });
-      
+
       const user = (req.user as any);
       const isOwner = user.type === "user" && issue.createdBy === user.id;
       const isAdmin = user.type === "admin";
-      
+
       if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" });
-      
+
       // Admin ward restriction
       if (user.type === "admin" && user.role !== "SUPER_ADMIN" && issue.ward !== user.wardAssigned) {
         return res.status(403).json({ message: "You can only delete issues in your assigned ward" });
       }
-      
+
       await storage.deleteIssue(issueId);
 
       if (user.type === "admin") {
@@ -432,6 +725,22 @@ export async function registerRoutes(
 
       io.emit("issue:delete", { id: issueId });
       res.status(204).end();
+
+      // Cleanup Cloudinary folder after response sent (prevents orphaned resources)
+      const folderPath = `issues/${issueId}`;
+      // Fire-and-forget cleanup with better error handling
+      (async () => {
+        try {
+          const cloudinary = getCloudinary();
+          await cloudinary.api.delete_resources_by_prefix(folderPath);
+          await cloudinary.api.delete_folder(folderPath);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          console.warn(`[Cleanup] Cloudinary folder cleanup failed for ${folderPath}: ${errorMsg}`);
+        }
+      })().catch((err) => {
+        console.error("[Cleanup] Unexpected error in folder cleanup:", err);
+      });
     } catch (err) {
       res.status(500).json({ message: "Deletion failed" });
     }
@@ -453,18 +762,21 @@ export async function registerRoutes(
     try {
       const user = (req.user as any);
       let analytics;
-      
+
       if (user.type === "user") {
         analytics = await (storage as any).getAnalytics(user.id, user.ward, false);
       } else if (user.type === "admin") {
         if (user.role === "SUPER_ADMIN") {
           analytics = await (storage as any).getAnalytics(undefined, undefined, true);
         } else {
+          if (!user.wardAssigned) {
+            return res.status(403).json({ message: "Assigned ward is required for admin analytics" });
+          }
           // Explicitly use wardAssigned for non-super admins
-          analytics = await (storage as any).getAnalytics(undefined, user.wardAssigned, false);
+          analytics = await (storage as any).getAnalytics(undefined, user.wardAssigned.toString(), false);
         }
       }
-      
+
       res.json(analytics);
     } catch (err) {
       console.error(err);
@@ -472,46 +784,46 @@ export async function registerRoutes(
     }
   });
 
-  // Seed Super Admin if not exists
-  storage.getAdminByAdminId("superadmin").then(superAdmin => {
-    if (!superAdmin) {
-      bcrypt.hash("admin123", 10).then(hashedPassword => {
-        storage.createAdmin({
-          adminId: "superadmin",
-          password: hashedPassword,
-          name: "Super Administrator",
-          role: "SUPER_ADMIN",
-          wardAssigned: "All",
-          isActive: true,
-          createdBy: null
-        }).then(() => {
-          console.log("Super Admin seeded: superadmin / admin123");
-        }).catch(err => console.error("Failed to seed Super Admin:", err));
+  // Seed Super Admin if not exists (DEVELOPMENT ONLY)
+  let superAdminSeeded = false; // Flag to prevent repeated queries
+  const seedSuperAdmin = async () => {
+    // SECURITY: Never seed default credentials in production
+    if (process.env.NODE_ENV === "production" || superAdminSeeded) {
+      return;
+    }
+
+    superAdminSeeded = true; // Mark as processed to prevent repeated queries
+
+    try {
+      const superAdmin = await storage.getAdminByAdminId("superadmin");
+      if (superAdmin) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log("Super Admin account already exists");
+        }
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash("admin123", 10);
+      await storage.createAdmin({
+        adminId: "superadmin",
+        password: hashedPassword,
+        name: "Super Administrator",
+        role: "SUPER_ADMIN",
+        wardAssigned: "All",
+        isActive: true,
+        createdBy: null
       });
-    }
-  }).catch(err => console.error("Failed to fetch superadmin status:", err));
 
-  // Auto-delete resolved issues every 24 hours
-  setInterval(async () => {
-    try {
-      if ((storage as any).deleteOldResolvedIssues) {
-        await (storage as any).deleteOldResolvedIssues();
-      }
+      console.log("Super Admin account created (adminId: superadmin)");
     } catch (err) {
-      console.error("Auto-delete task failed:", err);
+      console.error("Failed to seed Super Admin:", err);
+      superAdminSeeded = false; // Reset on error to allow retry on next startup
     }
-  }, 24 * 60 * 60 * 1000);
+  };
 
-  // Run once on startup
-  setTimeout(async () => {
-    try {
-      if ((storage as any).deleteOldResolvedIssues) {
-        await (storage as any).deleteOldResolvedIssues();
-      }
-    } catch (err) {
-      console.error("Initial auto-delete task failed:", err);
-    }
-  }, 5000);
+  seedSuperAdmin().catch((err) => {
+    console.error("CRITICAL: Super Admin seeding failed:", err);
+  });
 
-  return httpServer;
+  return { httpServer, io, sessionStore };
 }

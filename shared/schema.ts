@@ -100,7 +100,15 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertAdminSchema = createInsertSchema(admins).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
-export const insertIssueSchema = createInsertSchema(issues).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true });
+export const insertIssueSchema = createInsertSchema(issues).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true }).extend({
+  ward: z.string().refine(
+    (ward) => {
+      const wardNum = parseInt(ward, 10);
+      return !isNaN(wardNum) && wardNum >= 1 && wardNum <= 200;
+    },
+    { message: "Ward must be a number between 1 and 200" }
+  ),
+});
 export const updateIssueSchema = insertIssueSchema.partial();
 
 // === EXPLICIT API CONTRACT TYPES ===

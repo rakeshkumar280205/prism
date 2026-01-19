@@ -8,21 +8,31 @@ const socket = io("/", {
   autoConnect: false,
 });
 
+let activeHooks = 0;
+
 export function useSocket() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    socket.connect();
+    activeHooks += 1;
 
-    // Listen for global issue updates
-    socket.on("issue:updated", () => {
-      console.log("Socket: Issue updated, invalidating queries...");
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const invalidateIssues = () => {
       queryClient.invalidateQueries({ queryKey: [api.issues.list.path] });
-    });
+    };
+
+    const events = ["issue:new", "issue:update", "issue:delete", "issue:vote"];
+    events.forEach((event) => socket.on(event, invalidateIssues));
 
     return () => {
-      socket.off("issue:updated");
-      socket.disconnect();
+      events.forEach((event) => socket.off(event, invalidateIssues));
+      activeHooks = Math.max(0, activeHooks - 1);
+      if (activeHooks === 0) {
+        socket.disconnect();
+      }
     };
   }, [queryClient]);
 

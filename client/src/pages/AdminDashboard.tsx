@@ -44,7 +44,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredIssues = issues?.filter(issue => 
+  const filteredIssues = issues?.filter(issue =>
     issue.title.toLowerCase().includes(search.toLowerCase()) ||
     issue.ward.toString().toLowerCase().includes(search.toLowerCase())
   );
@@ -57,6 +57,9 @@ export default function AdminDashboard() {
   const getDashboardSubtitle = () => {
     if (admin?.role === "SUPER_ADMIN") {
       return "Oversee all reported issues across all wards";
+    }
+    if (admin?.wardAssigned) {
+      return `Managing Ward ${admin.wardAssigned}`;
     }
     return issues && issues.length > 0 ? `Managing Ward ${issues[0].ward}` : "Manage reported issues and update status";
   };
@@ -107,9 +110,9 @@ export default function AdminDashboard() {
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search by title or ward..." 
-            className="pl-9" 
+          <Input
+            placeholder="Search by title or ward..."
+            className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -135,10 +138,10 @@ export default function AdminDashboard() {
           <p className="col-span-full text-center py-10 text-slate-500">No issues found.</p>
         ) : (
           filteredIssues?.map((issue) => (
-            <IssueCard 
-              key={issue.id} 
-              issue={issue} 
-              isAdmin 
+            <IssueCard
+              key={issue.id}
+              issue={issue}
+              isAdmin
               onStatusChange={handleStatusChange}
               onDelete={handleDeleteIssue}
             />

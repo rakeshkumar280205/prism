@@ -1,17 +1,32 @@
-import { db } from "./db";
-import { users, admins, issues, votes, auditLogs, type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount, type AuditLog, type InsertAuditLog } from "@shared/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount, type AuditLog, type InsertAuditLog } from "@shared/schema";
+import { User as UserModel } from "./models/User";
+import { Admin as AdminModel } from "./models/Admin";
+import { Issue as IssueModel } from "./models/Issue";
+import { Vote as VoteModel } from "./models/Vote";
+import { AuditLog as AuditLogModel } from "./models/AuditLog";
+
+/**
+ * Strips MongoDB internal fields (_id, __v) and sensitive fields (password)
+ * to prevent leaking database implementation details and credentials to API responses
+ */
+function cleanObject<T extends Record<string, any>>(obj: T | null | undefined): T | undefined {
+  if (!obj) return undefined;
+  const { _id, __v, password, ...clean } = obj;
+  return clean as T;
+}
 
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByMobile(mobile: string): Promise<User | undefined>;
+  getUserByMobileForAuth(mobile: string): Promise<(User & { password: string }) | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User>;
 
   // Admins
   getAdmin(id: number): Promise<Admin | undefined>;
   getAdminByAdminId(adminId: string): Promise<Admin | undefined>;
+  getAdminByAdminIdForAuth(adminId: string): Promise<(Admin & { password: string }) | undefined>;
   createAdmin(admin: InsertAdmin): Promise<Admin>;
   listAdmins(): Promise<Admin[]>;
   updateAdmin(id: number, updates: Partial<InsertAdmin>): Promise<Admin>;
@@ -21,15 +36,16 @@ export interface IStorage {
   getIssue(id: number): Promise<Issue | undefined>;
   getIssues(filters?: { ward?: string | number; status?: string; category?: string; createdBy?: number }, userId?: number): Promise<IssueWithVoteCount[]>;
   createIssue(issue: any): Promise<Issue>;
+  updateIssue(id: number, updates: any): Promise<Issue | undefined>;
   updateIssueStatus(id: number, status: string): Promise<Issue>;
   deleteIssue(id: number): Promise<void>;
   deleteOldResolvedIssues(): Promise<void>;
   findPotentialDuplicates(data: { ward: string; category: string; title: string }): Promise<IssueWithVoteCount[]>;
-  
+
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   listAuditLogs(): Promise<AuditLog[]>;
-  
+
   // Votes
   toggleVote(issueId: number, userId: number): Promise<{ votes: number; voted: boolean }>;
   getVoteCount(issueId: number): Promise<number>;
@@ -39,204 +55,309 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Users
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const user = await UserModel.findOne({ id }).lean();
+    if (!user || user.id == null) return undefined;
+    return cleanObject(user) as User;
   }
 
   async getUserByMobile(mobile: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.mobile, mobile));
-    return user;
+    const user = await UserModel.findOne({ mobile }).lean();
+    if (!user || user.id == null) return undefined;
+    return cleanObject(user) as User;
+  }
+
+  async getUserByMobileForAuth(mobile: string): Promise<(User & { password: string }) | undefined> {
+    const user = await UserModel.findOne({ mobile }).lean();
+    if (!user || user.id == null) return undefined;
+    return user as (User & { password: string });
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    const user = await UserModel.create(insertUser);
+    return cleanObject(user.toObject() as User) as User;
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
-    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
-    return user;
+    const user = await UserModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+    if (!user) {
+      throw new Error(`User with id ${id} not found`);
+    }
+    return cleanObject(user) as User;
   }
 
   // Admins
   async getAdmin(id: number): Promise<Admin | undefined> {
-    const [admin] = await db.select().from(admins).where(eq(admins.id, id));
-    return admin;
+    const admin = await AdminModel.findOne({ id }).lean();
+    if (!admin || admin.id == null) return undefined;
+    return cleanObject(admin) as Admin;
   }
 
   async getAdminByAdminId(adminId: string): Promise<Admin | undefined> {
-    const [admin] = await db.select().from(admins).where(eq(admins.adminId, adminId));
-    return admin;
+    const admin = await AdminModel.findOne({ adminId }).lean();
+    if (!admin || admin.id == null) return undefined;
+    return cleanObject(admin) as Admin;
+  }
+
+  async getAdminByAdminIdForAuth(adminId: string): Promise<(Admin & { password: string }) | undefined> {
+    const admin = await AdminModel.findOne({ adminId }).lean();
+    if (!admin || admin.id == null) return undefined;
+    return admin as (Admin & { password: string });
   }
 
   async createAdmin(insertAdmin: InsertAdmin): Promise<Admin> {
-    const [admin] = await db.insert(admins).values(insertAdmin).returning();
-    return admin;
+    // Prepare admin data with proper defaults for Mongoose
+    const adminData: any = {
+      adminId: insertAdmin.adminId,
+      password: insertAdmin.password,
+      name: insertAdmin.name,
+      role: insertAdmin.role || "ADMIN",
+      wardAssigned: insertAdmin.wardAssigned,
+      isActive: insertAdmin.isActive !== null ? insertAdmin.isActive : true,
+      createdBy: insertAdmin.createdBy,
+    };
+
+    const admin = await AdminModel.create(adminData);
+    const savedAdmin = admin.toObject();
+    if (savedAdmin.id == null) throw new Error("Admin created without ID");
+    return cleanObject(savedAdmin) as Admin;
   }
 
   async listAdmins(): Promise<Admin[]> {
-    return await db.select().from(admins).orderBy(desc(admins.createdAt));
+    // Defensive limit to prevent memory exhaustion (1000 admins is far beyond expected scale)
+    const admins = await AdminModel.find().sort({ createdAt: -1 }).limit(1000).lean();
+    return admins.map(cleanObject) as Admin[];
   }
 
   async updateAdmin(id: number, updates: Partial<InsertAdmin>): Promise<Admin> {
-    const [admin] = await db.update(admins).set(updates).where(eq(admins.id, id)).returning();
-    return admin;
+    const admin = await AdminModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+    if (!admin) {
+      throw new Error(`Admin with id ${id} not found`);
+    }
+    return cleanObject(admin) as Admin;
   }
 
   async deleteAdmin(id: number): Promise<void> {
-    await db.delete(admins).where(eq(admins.id, id));
+    await AdminModel.deleteOne({ id });
   }
 
   // Issues
   async getIssue(id: number): Promise<Issue | undefined> {
-    const [issue] = await db.select().from(issues).where(eq(issues.id, id));
-    return issue;
+    const issue = await IssueModel.findOne({ id }).lean();
+    if (!issue || issue.id == null) return undefined;
+    return cleanObject(issue) as Issue;
   }
 
   async getIssues(filters: { ward?: string | number; status?: string; category?: string; createdBy?: number } = {}, userId?: number): Promise<IssueWithVoteCount[]> {
-    let query = db.select().from(issues);
-    const conditions = [];
+    const query: any = {};
 
-    if (filters.ward) conditions.push(eq(issues.ward, filters.ward.toString()));
-    if (filters.status) conditions.push(eq(issues.status, filters.status));
-    if (filters.category) conditions.push(eq(issues.category, filters.category));
-    if (filters.createdBy) conditions.push(eq(issues.createdBy, filters.createdBy));
+    if (filters.ward) query.ward = filters.ward.toString();
+    if (filters.status) query.status = filters.status;
+    if (filters.category) query.category = filters.category;
+    if (filters.createdBy) query.createdBy = filters.createdBy;
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+    // Limit results to prevent unbounded queries and memory exhaustion
+    const MAX_ISSUES = 10000; // Hard limit for safety
+
+    // Sort by date and apply limit
+    const allIssues = await IssueModel.find(query).sort({ createdAt: -1 }).limit(MAX_ISSUES).lean();
+
+    if (allIssues.length === 0) {
+      return [];
     }
-    
-    // Sort by date
-    const allIssues = await query.orderBy(desc(issues.createdAt));
+
+    // Filter out any issues without valid IDs (defensive)
+    const validIssues = allIssues.filter(issue => issue.id != null);
+    if (validIssues.length === 0) {
+      return [];
+    }
+
+    // Batch fetch vote counts for all issues (single aggregation query)
+    const issueIds = validIssues.map(issue => issue.id!);
+    const voteCounts = await VoteModel.aggregate([
+      { $match: { issueId: { $in: issueIds } } },
+      { $group: { _id: "$issueId", count: { $sum: 1 } } }
+    ]);
+    const voteCountMap = new Map(voteCounts.map(v => [v._id, v.count]));
+
+    // Batch fetch user votes for all issues (single query if userId provided)
+    let userVotesMap = new Map<number, boolean>();
+    if (userId) {
+      const userVotes = await VoteModel.find({
+        issueId: { $in: issueIds },
+        userId
+      }).lean();
+      userVotesMap = new Map(userVotes.map(v => [v.issueId, true]));
+    }
 
     // Enhance with vote data
-    const enhancedIssues = await Promise.all(allIssues.map(async (issue) => {
-      const voteCount = await this.getVoteCount(issue.id);
-      let userHasVoted = false;
-      if (userId) {
-        userHasVoted = await this.hasUserVoted(issue.id, userId);
-      }
-      return { ...issue, voteCount, userHasVoted };
-    }));
-    
+    const enhancedIssues = validIssues.map((issue) => {
+      const voteCount = voteCountMap.get(issue.id!) || 0;
+      const userHasVoted = userVotesMap.get(issue.id!) || false;
+      return { ...cleanObject(issue), voteCount, userHasVoted } as IssueWithVoteCount & { voteCount: number; userHasVoted: boolean };
+    });
+
     return enhancedIssues.sort((a, b) => b.voteCount - a.voteCount);
   }
 
   async createIssue(insertIssue: any): Promise<Issue> {
-    const [issue] = await db.insert(issues).values(insertIssue).returning();
-    return issue;
+    const issue = await IssueModel.create(insertIssue);
+    return cleanObject(issue.toObject() as Issue) as Issue;
   }
 
   async updateIssueStatus(id: number, status: string): Promise<Issue> {
-    const [issue] = await db.update(issues).set({ status, updatedAt: new Date() }).where(eq(issues.id, id)).returning();
-    return issue;
+    const issue = await IssueModel.findOneAndUpdate({ id }, { status, updatedAt: new Date() }, { new: true }).lean();
+    if (!issue) {
+      throw new Error("Issue not found");
+    }
+    return cleanObject(issue) as Issue;
   }
 
-  async updateIssue(id: number, updates: any): Promise<Issue> {
-    const [issue] = await db.update(issues).set({ ...updates, updatedAt: new Date() }).where(eq(issues.id, id)).returning();
-    return issue;
+  async updateIssue(id: number, updates: any): Promise<Issue | undefined> {
+    const issue = await IssueModel.findOneAndUpdate({ id }, { ...updates, updatedAt: new Date() }, { new: true }).lean();
+    return cleanObject(issue) as Issue | undefined;
   }
 
   async deleteIssue(id: number): Promise<void> {
-    await db.delete(votes).where(eq(votes.issueId, id)); // Cascade delete votes
-    await db.delete(issues).where(eq(issues.id, id));
+    await VoteModel.deleteMany({ issueId: id }); // Cascade delete votes
+    await IssueModel.deleteOne({ id });
   }
 
   async deleteOldResolvedIssues(): Promise<void> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const oldIssues = await db.select().from(issues).where(
-      and(
-        eq(issues.status, "Resolved"),
-        sql`${issues.updatedAt} < ${thirtyDaysAgo}`
-      )
-    );
+    const BATCH_SIZE = 1000; // Process in batches to avoid memory exhaustion
+    let totalDeleted = 0;
 
-    for (const issue of oldIssues) {
-      await this.deleteIssue(issue.id);
+    // Use bulk operations to delete in batches without loading all IDs into memory
+    while (true) {
+      // Find one batch of old issues
+      const batch = await IssueModel.find({
+        status: "Resolved",
+        updatedAt: { $lt: thirtyDaysAgo }
+      }).select('id').limit(BATCH_SIZE).lean();
+
+      if (batch.length === 0) break; // No more issues to delete
+
+      const batchIds = batch.map(issue => issue.id).filter((id): id is number => id != null);
+      if (batchIds.length === 0) break;
+
+      totalDeleted += batchIds.length;
+
+      // Delete votes and issues for this batch in parallel
+      await Promise.all([
+        VoteModel.deleteMany({ issueId: { $in: batchIds } }),
+        IssueModel.deleteMany({ id: { $in: batchIds } })
+      ]);
     }
-    if (oldIssues.length > 0) {
-      console.log(`Auto-deleted ${oldIssues.length} resolved issues older than 30 days.`);
+
+    if (totalDeleted > 0) {
+      console.log(`[Cleanup] Auto-deleted ${totalDeleted} resolved issue(s) older than 30 days`);
     }
   }
 
   async findPotentialDuplicates(data: { ward: string; category: string; title: string }): Promise<IssueWithVoteCount[]> {
-    const similarIssues = await db.select()
-      .from(issues)
-      .where(
-        and(
-          eq(issues.ward, data.ward),
-          eq(issues.category, data.category),
-          sql`LOWER(${issues.title}) LIKE ${'%' + data.title.toLowerCase() + '%'}`
-        )
-      )
-      .orderBy(desc(issues.createdAt))
-      .limit(5);
+    // Escape regex special characters to prevent ReDoS attacks and injection
+    const escapedTitle = data.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const similarIssues = await IssueModel.find({
+      ward: data.ward,
+      category: data.category,
+      title: { $regex: escapedTitle, $options: 'i' }
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
 
-    return Promise.all(similarIssues.map(async (issue) => {
-      const voteCount = await this.getVoteCount(issue.id);
-      return { ...issue, voteCount, userHasVoted: false };
-    }));
+    if (similarIssues.length === 0) {
+      return [];
+    }
+
+    // Filter valid issues with IDs
+    const validIssues = similarIssues.filter(issue => issue.id != null);
+    if (validIssues.length === 0) {
+      return [];
+    }
+
+    // Batch fetch vote counts using aggregation instead of N+1 queries
+    const issueIds = validIssues.map(issue => issue.id!);
+    const voteCounts = await VoteModel.aggregate([
+      { $match: { issueId: { $in: issueIds } } },
+      { $group: { _id: '$issueId', count: { $sum: 1 } } }
+    ]);
+
+    // Create a map for O(1) lookup
+    const voteCountMap = new Map(voteCounts.map(vc => [vc._id, vc.count]));
+
+    return validIssues.map(issue => ({
+      ...cleanObject(issue),
+      voteCount: voteCountMap.get(issue.id!) || 0,
+      userHasVoted: false
+    } as IssueWithVoteCount & { voteCount: number; userHasVoted: boolean }));
   }
 
   // Votes
   async toggleVote(issueId: number, userId: number): Promise<{ votes: number; voted: boolean }> {
-    const existingVote = await db.select().from(votes).where(and(eq(votes.issueId, issueId), eq(votes.userId, userId)));
+    const existingVote = await VoteModel.findOne({ issueId, userId }).lean();
 
-    if (existingVote.length > 0) {
+    if (existingVote) {
       // Unvote
-      await db.delete(votes).where(eq(votes.id, existingVote[0].id));
+      await VoteModel.deleteOne({ id: existingVote.id });
       const count = await this.getVoteCount(issueId);
       return { votes: count, voted: false };
     } else {
       // Vote
-      await db.insert(votes).values({ issueId, userId });
+      try {
+        await VoteModel.create({ issueId, userId });
+      } catch (error: any) {
+        if (error && error.code === 11000) {
+          const count = await this.getVoteCount(issueId);
+          return { votes: count, voted: true };
+        }
+        throw error;
+      }
       const count = await this.getVoteCount(issueId);
       return { votes: count, voted: true };
     }
   }
 
   async getVoteCount(issueId: number): Promise<number> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(votes).where(eq(votes.issueId, issueId));
-    return Number(result[0]?.count || 0);
+    const count = await VoteModel.countDocuments({ issueId });
+    return count;
   }
 
   async hasUserVoted(issueId: number, userId: number): Promise<boolean> {
-    const result = await db.select().from(votes).where(and(eq(votes.issueId, issueId), eq(votes.userId, userId)));
-    return result.length > 0;
+    const vote = await VoteModel.findOne({ issueId, userId }).lean();
+    return vote !== null;
   }
 
   // Audit Logs
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
-    const [auditLog] = await db.insert(auditLogs).values(log).returning();
-    return auditLog;
+    const auditLog = await AuditLogModel.create(log);
+    return cleanObject(auditLog.toObject() as AuditLog) as AuditLog;
   }
 
   async listAuditLogs(): Promise<AuditLog[]> {
-    return await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt));
+    // Defensive limit to prevent memory exhaustion in production (10000 logs should cover months of activity)
+    const logs = await AuditLogModel.find().sort({ createdAt: -1 }).limit(10000).lean();
+    return logs.map(cleanObject) as AuditLog[];
   }
 
   // Analytics
   async getAnalytics(userId?: number, ward?: string, isSuperAdmin?: boolean) {
-    let query = db.select().from(issues);
-    const conditions = [];
+    const filter: any = {};
 
     // Filter based on role
     if (userId && !isSuperAdmin && !ward) {
       // User: only their own issues (fallback if no ward)
-      conditions.push(eq(issues.createdBy, userId));
+      filter.createdBy = userId;
     } else if (ward && !isSuperAdmin) {
       // User/Admin: only their assigned ward
-      conditions.push(eq(issues.ward, ward));
+      filter.ward = ward;
     }
     // SuperAdmin: all issues (no filter)
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    const allIssues = await query;
+    const rawIssues = await IssueModel.find(filter).lean();
+    const allIssues = rawIssues.map(cleanObject) as typeof rawIssues;
 
     // Calculate statistics
     const totalIssues = allIssues.length;
@@ -269,9 +390,11 @@ export class DatabaseStorage implements IStorage {
       const createdAt = issue.createdAt;
       if (createdAt) {
         const issueDate = new Date(createdAt);
-        const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        if (monthlyTrend.hasOwnProperty(monthKey)) {
-          monthlyTrend[monthKey]++;
+        if (!Number.isNaN(issueDate.getTime())) {
+          const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+          if (monthlyTrend.hasOwnProperty(monthKey)) {
+            monthlyTrend[monthKey]++;
+          }
         }
       }
     });

@@ -43,7 +43,9 @@ function Router() {
 function App() {
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem("app_lang");
-    return (saved as Language) || "en";
+    // Validate language value is one of supported languages
+    const validLanguages: Language[] = ["en", "kn"];
+    return (saved && validLanguages.includes(saved as Language)) ? (saved as Language) : "en";
   });
 
   useEffect(() => {

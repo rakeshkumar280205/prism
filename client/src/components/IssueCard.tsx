@@ -39,6 +39,10 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
   const { toast } = useToast();
   const { language, t } = useI18n();
 
+  const imageSrc = issue.image
+    ? (issue.image.startsWith("http") ? issue.image : `/uploads/${issue.image}`)
+    : null;
+
   const handleVote = () => {
     if (isAdmin) return;
     voteMutation.mutate(issue.id, {
@@ -61,14 +65,14 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
     >
       <Card className="overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-shadow group h-full flex flex-col">
         {/* Image Section */}
-        <ImageModal 
-          src={issue.image ? `/uploads/${issue.image}` : null}
+        <ImageModal
+          src={imageSrc}
           alt={issue.title}
         >
           <div className="relative h-48 w-full bg-slate-100 overflow-hidden cursor-pointer">
-            {issue.image ? (
-              <img 
-                src={`/uploads/${issue.image}`} 
+            {imageSrc ? (
+              <img
+                src={imageSrc}
                 alt={issue.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
@@ -79,20 +83,20 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
               </div>
             )}
             <div className="absolute top-3 right-3">
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={`${statusColors[issue.status as keyof typeof statusColors] || "bg-slate-100"} backdrop-blur-sm shadow-sm font-semibold ${language === 'kn' ? 'text-[10px]' : ''}`}
               >
-                {issue.status === 'Pending' ? t("analytics.pending") : 
-                 issue.status === 'In Progress' ? t("analytics.progress") : 
-                 issue.status === 'Resolved' ? t("analytics.resolved") : issue.status}
+                {issue.status === 'Pending' ? t("analytics.pending") :
+                  issue.status === 'In Progress' ? t("analytics.progress") :
+                    issue.status === 'Resolved' ? t("analytics.resolved") : issue.status}
               </Badge>
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
             <div className="absolute bottom-3 left-3 text-white text-xs font-medium flex items-center gap-1">
-               <Badge variant="secondary" className={`bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30 ${language === 'kn' ? 'text-[10px]' : ''}`}>
-                 {issue.category}
-               </Badge>
+              <Badge variant="secondary" className={`bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30 ${language === 'kn' ? 'text-[10px]' : ''}`}>
+                {issue.category}
+              </Badge>
             </div>
           </div>
         </ImageModal>
@@ -113,7 +117,7 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
           <p className={`text-slate-600 text-sm line-clamp-3 mb-4 ${language === 'kn' ? 'text-xs' : ''}`}>
             {issue.description}
           </p>
-          
+
           <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
             <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
             <div>
@@ -125,9 +129,9 @@ export function IssueCard({ issue, isAdmin, onStatusChange, onDelete }: IssueCar
 
         <CardFooter className="p-4 pt-0 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center gap-2 mt-auto flex-wrap">
           {!isAdmin ? (
-            <Button 
-              variant={issue.userHasVoted ? "default" : "outline"} 
-              size="sm" 
+            <Button
+              variant={issue.userHasVoted ? "default" : "outline"}
+              size="sm"
               onClick={handleVote}
               className={`gap-2 transition-all ${issue.userHasVoted ? "bg-primary hover:bg-primary/90" : "hover:border-primary/50 hover:text-primary"} ${language === 'kn' ? 'text-[10px]' : ''}`}
               disabled={voteMutation.isPending}

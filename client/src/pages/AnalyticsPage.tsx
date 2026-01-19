@@ -26,8 +26,8 @@ export default function AnalyticsPage() {
   const [, setLocation] = useLocation();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  const socket = useSocket();
+
+  const socket = useSocket(); // Keep socket connection alive for real-time issue updates
 
   // Check authentication
   if (!user && !admin) {
@@ -40,16 +40,14 @@ export default function AnalyticsPage() {
     fetchAnalytics();
   }, []);
 
-  // Listen for real-time updates
+  // Refresh analytics whenever issue events occur (create/update/delete/vote)
   useEffect(() => {
-    if (!socket) return;
+    const events = ["issue:new", "issue:update", "issue:delete", "issue:vote"] as const;
+    const handler = () => fetchAnalytics();
 
-    socket.on("analytics:update", (data: AnalyticsData) => {
-      setAnalytics(data);
-    });
-
+    events.forEach((event) => socket.on(event, handler));
     return () => {
-      socket.off("analytics:update");
+      events.forEach((event) => socket.off(event, handler));
     };
   }, [socket]);
 
@@ -70,6 +68,7 @@ export default function AnalyticsPage() {
   const getRoleLabel = () => {
     if (user) return `${t("common.ward")} ${user.ward} ${t("analytics.title")}`;
     if (admin?.role === "SUPER_ADMIN") return `All Issues ${t("analytics.title")}`;
+    if (admin?.wardAssigned) return `${t("common.ward")} ${admin.wardAssigned} ${t("analytics.title")}`;
     return `${t("common.ward")} ${t("analytics.title")}`;
   };
 
@@ -175,15 +174,15 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="month" stroke="#64748b" />
                 <YAxis stroke="#64748b" />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #475569", borderRadius: "8px" }}
                   labelStyle={{ color: "#f1f5f9" }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="#3B82F6" 
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#3B82F6"
                   name={language === 'kn' ? 'ವರದಿಯಾದ ಸಮಸ್ಯೆಗಳು' : 'Issues Reported'}
                   strokeWidth={2}
                   dot={{ fill: "#3B82F6", r: 4 }}
