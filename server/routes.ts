@@ -156,8 +156,8 @@ export async function registerRoutes(
       store: sessionStore,
       cookie: {
         httpOnly: true,
-        sameSite: "lax",
-        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax", // "none" required for cross-origin (Vercel → Render)
+        secure: isProduction, // Must be true in production when sameSite=none
         maxAge: sessionMaxAgeMs,
       },
     })

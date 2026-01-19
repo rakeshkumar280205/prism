@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer, type Server } from "http";
@@ -87,6 +88,27 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+// CORS: allow only known origins, support credentials, and handle preflight
+const isProduction = process.env.NODE_ENV === "production";
+const devOrigins = ["http://localhost:5173", "http://localhost:3000"];
+const allowedOrigins = isProduction
+  ? [process.env.FRONTEND_URL].filter(Boolean) as string[]
+  : devOrigins;
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests without Origin (server-to-server, curl) and same-origin
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+// Enable automatic handling of preflight requests
+app.options("*", cors(corsOptions));
 
 app.use(
   express.json({

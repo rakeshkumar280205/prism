@@ -3,9 +3,10 @@ import { io } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 
-const socket = io("/", {
+const socket = io(import.meta.env.VITE_API_BASE_URL || window.location.origin, {
   path: "/socket.io",
   autoConnect: false,
+  withCredentials: true,
 });
 
 let activeHooks = 0;

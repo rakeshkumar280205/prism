@@ -57,6 +57,7 @@
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.25.12",
     "express": "^4.21.2",
+    "cors": "^2.8.5",
     "express-rate-limit": "^7.1.5",
     "express-session": "^1.18.1",
     "framer-motion": "^11.18.2",
