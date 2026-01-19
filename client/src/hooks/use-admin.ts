@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
+import { withBase } from "@/lib/api";
 
 export function useAdmins() {
   const queryClient = useQueryClient();
@@ -7,7 +8,7 @@ export function useAdmins() {
   const { data: admins, isLoading } = useQuery({
     queryKey: [api.admins.list.path],
     queryFn: async () => {
-      const res = await fetch(api.admins.list.path);
+      const res = await fetch(withBase(api.admins.list.path), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch admins");
       return await res.json();
     },
@@ -15,10 +16,11 @@ export function useAdmins() {
 
   const createAdminMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch(api.admins.create.path, {
+      const res = await fetch(withBase(api.admins.create.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -33,10 +35,11 @@ export function useAdmins() {
 
   const updateAdminMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/admins/${id}`, {
+      const res = await fetch(withBase(`/api/admins/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -51,8 +54,9 @@ export function useAdmins() {
 
   const deleteAdminMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/admins/${id}`, {
+      const res = await fetch(withBase(`/api/admins/${id}`), {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();

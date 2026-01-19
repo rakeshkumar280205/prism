@@ -7,6 +7,7 @@ import { useSocket } from "@/hooks/use-socket";
 import { BarChart3, TrendingUp, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n";
+import { withBase } from "@/lib/api";
 
 interface AnalyticsData {
   totalIssues: number;
@@ -54,7 +55,7 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/analytics");
+      const res = await fetch(withBase("/api/analytics"), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch analytics");
       const data = await res.json();
       setAnalytics(data);

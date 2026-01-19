@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { api, type LoginUserRequest, type LoginAdminRequest, type InsertUser } from "@shared/routes";
+import { withBase } from "@/lib/api";
 
 export function useAuth() {
   const queryClient = useQueryClient();
@@ -9,7 +10,9 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
-      const res = await fetch(api.auth.me.path);
+      const res = await fetch(withBase(api.auth.me.path), {
+        credentials: "include",
+      });
       if (res.status === 401) return null; // No active session
       if (!res.ok) throw new Error("Failed to fetch session");
       return await res.json(); // Returns { user?: ..., admin?: ... }
@@ -20,10 +23,11 @@ export function useAuth() {
 
   const loginUserMutation = useMutation({
     mutationFn: async (credentials: LoginUserRequest) => {
-      const res = await fetch(api.auth.loginUser.path, {
+      const res = await fetch(withBase(api.auth.loginUser.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -36,10 +40,11 @@ export function useAuth() {
 
   const loginAdminMutation = useMutation({
     mutationFn: async (credentials: LoginAdminRequest) => {
-      const res = await fetch(api.auth.loginAdmin.path, {
+      const res = await fetch(withBase(api.auth.loginAdmin.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -52,7 +57,7 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch(api.auth.logout.path, { method: "POST" });
+      await fetch(withBase(api.auth.logout.path), { method: "POST", credentials: "include" });
     },
     onSuccess: () => {
       queryClient.setQueryData([api.auth.me.path], null);
@@ -62,10 +67,11 @@ export function useAuth() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
-      const res = await fetch(api.users.register.path, {
+      const res = await fetch(withBase(api.users.register.path), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
@@ -77,10 +83,11 @@ export function useAuth() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: Partial<InsertUser>) => {
-      const res = await fetch(api.users.updateProfile.path, {
+      const res = await fetch(withBase(api.users.updateProfile.path), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
+        credentials: "include",
       });
       if (!res.ok) {
         const err = await res.json();
