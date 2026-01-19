@@ -91,12 +91,12 @@
     "zod": "^3.24.2",
     "zod-validation-error": "^3.4.0",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47"
+    "postcss": "^8.4.47",
+    "@tailwindcss/typography": "^0.5.15"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.4.4",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
-    "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.18",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "4.17.21",
