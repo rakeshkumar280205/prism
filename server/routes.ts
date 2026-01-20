@@ -76,13 +76,26 @@ export async function registerRoutes(
     res.json({ status: "ok", timestamp });
   });
 
-  // Socket.IO Setup
+  // Socket.IO Setup (align CORS allowlist with HTTP CORS logic, include Render external URL fallback)
+  const socketAllowedOrigins = process.env.NODE_ENV === "production"
+    ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean)
+    : true;
+
   const io = new SocketIOServer(httpServer, {
     path: "/socket.io",
     cors: {
-      origin: process.env.NODE_ENV === "production"
-        ? process.env.FRONTEND_URL || "http://localhost:5173" // Restrict to known frontend in production
-        : true, // Allow all origins in development
+      origin: (origin, callback) => {
+        // Allow requests with Origin: null (health checks, server-to-server)
+        if (!origin) return callback(null, true);
+        // In development, allow all origins
+        if (socketAllowedOrigins === true) return callback(null, true);
+        // In production, check allowlist
+        if (Array.isArray(socketAllowedOrigins) && socketAllowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        // Silently deny unknown origins (no thrown error)
+        callback(null, false);
+      },
       credentials: true,
     },
   });

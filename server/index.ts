@@ -92,8 +92,9 @@ declare module "http" {
 // CORS: allow only known origins, support credentials, and handle preflight
 const isProduction = process.env.NODE_ENV === "production";
 const devOrigins = ["http://localhost:5173", "http://localhost:3000"];
+// Allow both explicit frontend URL and Render-provided external URL in production
 const allowedOrigins = isProduction
-  ? [process.env.FRONTEND_URL].filter(Boolean) as string[]
+  ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean) as string[]
   : devOrigins;
 
 const corsOptions = {
@@ -101,7 +102,9 @@ const corsOptions = {
     // Allow requests without Origin (server-to-server, curl) and same-origin
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error("Not allowed by CORS"));
+    // Silently reject unknown origins without throwing an error
+    // This prevents error logs in production while still rejecting CORS requests
+    callback(null, false);
   },
   credentials: true,
 };

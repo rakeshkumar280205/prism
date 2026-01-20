@@ -1,4 +1,5 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+// Prefer env; fall back to current origin (avoids pointing to localhost in production)
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
 
 export function withBase(url: string): string {
     if (!url) return API_BASE_URL;
