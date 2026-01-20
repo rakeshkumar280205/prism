@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type UpdateIssueStatusRequest } from "@shared/routes";
+import { api, buildUrl } from "@/api-contract";
+import { type UpdateIssueStatusRequest } from "@/schemas";
 import { withBase } from "@/lib/api";
 
 export function useIssues(filters?: { ward?: string; status?: string; category?: string }) {

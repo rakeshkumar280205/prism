@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@shared/routes";
+import { api, buildUrl } from "@/api-contract";
 import { withBase } from "@/lib/api";
 
 export function useAdmins() {

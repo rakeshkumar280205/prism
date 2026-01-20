@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { api, type LoginUserRequest, type LoginAdminRequest, type InsertUser } from "@shared/routes";
+import { api, buildUrl } from "@/api-contract";
+import { type LoginUserRequest, type LoginAdminRequest, type InsertUser } from "@/schemas";
 import { withBase } from "@/lib/api";
 
 export function useAuth() {

@@ -5,7 +5,7 @@ import { ThumbsUp, MapPin, Clock, AlertCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useVoteIssue } from "@/hooks/use-issues";
 import { useToast } from "@/hooks/use-toast";
-import { type IssueWithVoteCount } from "@shared/schema";
+import { type IssueWithVoteCount } from "@/schemas";
 import { motion } from "framer-motion";
 import { ImageModal } from "@/components/ImageModal";
 import { useI18n } from "@/lib/i18n";

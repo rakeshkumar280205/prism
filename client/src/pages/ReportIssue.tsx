@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, X, Image as ImageIcon, MapPin, AlertCircle, ThumbsUp } from "lucide-react";
 import { ImageModal } from "@/components/ImageModal";
 import { apiRequest } from "@/lib/queryClient";
-import { IssueWithVoteCount } from "@shared/schema";
+import { type IssueWithVoteCount } from "@/schemas";
 import { useI18n } from "@/lib/i18n";
 
 export default function ReportIssue() {

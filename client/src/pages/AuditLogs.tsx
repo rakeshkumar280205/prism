@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { AuditLog } from "@shared/schema";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { type AuditLog } from "@/schemas";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ClipboardList, User, Activity, Target, Clock } from "lucide-react";

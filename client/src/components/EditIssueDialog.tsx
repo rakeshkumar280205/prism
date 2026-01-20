@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertIssueSchema } from "@shared/schema";
+import { insertIssueSchema } from "@/schemas";
 import { z } from "zod";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
@@ -47,7 +47,7 @@ export function EditIssueDialog({ issue, isOpen, onClose, onSave, isSaving }: Ed
     if (data.ward) formData.append("ward", data.ward);
     if (data.address) formData.append("address", data.address);
     if (imageFile) formData.append("image", imageFile);
-    
+
     onSave(formData);
   };
 
