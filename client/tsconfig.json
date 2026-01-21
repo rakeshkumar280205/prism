@@ -1,0 +1,26 @@
+{
+    "extends": "../tsconfig.json",
+    "include": [
+        "src/**/*",
+        "*.ts",
+        "*.tsx"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ],
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+            "@shared/*": [
+                "../shared/*"
+            ],
+            "@assets/*": [
+                "../attached_assets/*"
+            ]
+        }
+    }
+}
