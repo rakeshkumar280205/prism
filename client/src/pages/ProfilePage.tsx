@@ -11,7 +11,7 @@ import { useI18n } from "@/lib/i18n";
 
 export default function ProfilePage() {
   const { language, t } = useI18n();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -25,7 +25,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    if (!isLoading && !user) {
       setLocation("/");
       return;
     }
@@ -36,12 +36,12 @@ export default function ProfilePage() {
       ward: user.ward || "",
     });
     setIsEditing(false);
-  }, [user, setLocation]);
+  }, [isLoading, user, setLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isEditing) return;
-    
+
     try {
       await (updateProfile as any).mutateAsync(formData);
       toast({
@@ -78,7 +78,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (!user) return null;
+  if (isLoading || !user) return null;
 
   return (
     <div className={`max-w-2xl mx-auto py-8 ${language === 'kn' ? 'font-kannada' : ''}`}>

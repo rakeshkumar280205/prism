@@ -23,18 +23,21 @@ const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899"
 
 export default function AnalyticsPage() {
   const { language, t } = useI18n();
-  const { user, admin } = useAuth();
+  const { user, admin, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const socket = useSocket(); // Keep socket connection alive for real-time issue updates
 
-  // Check authentication
-  if (!user && !admin) {
-    setLocation("/");
-    return null;
-  }
+  // Check authentication after auth finishes loading
+  useEffect(() => {
+    if (!isLoading && !user && !admin) {
+      setLocation("/");
+    }
+  }, [isLoading, user, admin, setLocation]);
+
+  if (isLoading || (!user && !admin)) return null;
 
   // Fetch analytics on mount
   useEffect(() => {

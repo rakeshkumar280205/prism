@@ -27,7 +27,7 @@ import {
 
 export default function MyIssuesPage() {
   const { language, t } = useI18n();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -37,18 +37,21 @@ export default function MyIssuesPage() {
   const { toast } = useToast();
   useSocket(); // Real-time updates
 
-  if (!user) {
-    setLocation("/");
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/");
+    }
+  }, [isLoading, user, setLocation]);
 
-  const { data: issues, isLoading, refetch } = useIssues(
-    statusFilter !== "all" 
+  if (isLoading || !user) return null;
+
+  const { data: issues, isLoading: issuesLoading, refetch } = useIssues(
+    statusFilter !== "all"
       ? { status: statusFilter } as any
       : undefined
   );
 
-  const filteredIssues = issues?.filter(issue => 
+  const filteredIssues = issues?.filter(issue =>
     (issue.createdBy === user.id) && (
       issue.title.toLowerCase().includes(search.toLowerCase()) ||
       issue.description.toLowerCase().includes(search.toLowerCase())
@@ -96,9 +99,9 @@ export default function MyIssuesPage() {
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row gap-4 sticky top-16 md:top-20 z-30">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder={t("my_issues.search")} 
-            className="pl-9" 
+          <Input
+            placeholder={t("my_issues.search")}
+            className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             data-testid="input-search-my-issues"
@@ -119,7 +122,7 @@ export default function MyIssuesPage() {
 
       {/* Issues Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading ? (
+        {issuesLoading ? (
           <p className="col-span-full text-center py-10 text-slate-500">{t("common.loading")}</p>
         ) : filteredIssues?.length === 0 ? (
           <p className={`col-span-full text-center py-10 text-slate-500 ${language === 'kn' ? 'text-sm' : ''}`}>
@@ -128,13 +131,13 @@ export default function MyIssuesPage() {
         ) : (
           filteredIssues?.map((issue) => (
             <div key={issue.id} className="relative group">
-              <IssueCard 
+              <IssueCard
                 issue={issue}
                 data-testid={`card-issue-${issue.id}`}
               />
               <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button 
-                  size="icon" 
+                <Button
+                  size="icon"
                   variant="outline"
                   className="bg-white shadow-md"
                   onClick={() => handleEdit(issue)}
@@ -144,8 +147,8 @@ export default function MyIssuesPage() {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      size="icon" 
+                    <Button
+                      size="icon"
                       variant="destructive"
                       className="shadow-md"
                       data-testid={`button-delete-issue-${issue.id}`}
@@ -178,7 +181,7 @@ export default function MyIssuesPage() {
       </div>
 
       {editingIssue && (
-        <EditIssueDialog 
+        <EditIssueDialog
           issue={editingIssue}
           isOpen={isEditDialogOpen}
           onClose={() => {
