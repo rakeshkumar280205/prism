@@ -27,9 +27,9 @@ export default function Home() {
     ...(filters.status !== "all" && { status: filters.status }),
   };
 
-  const { data: issues, isLoading, refetch } = useIssues(queryFilters);
+  const { data: issues, isLoading, isError, error, refetch } = useIssues(queryFilters);
 
-  const filteredIssues = issues?.filter(issue => 
+  const filteredIssues = issues?.filter(issue =>
     issue.title.toLowerCase().includes(search.toLowerCase()) ||
     issue.description.toLowerCase().includes(search.toLowerCase())
   );
@@ -46,14 +46,14 @@ export default function Home() {
             {t("home.subtitle")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-             <Link href="/report">
-               <Button size="lg" className={`bg-white text-primary hover:bg-blue-50 border-0 font-semibold shadow-lg ${language === 'kn' ? 'text-sm' : ''}`}>
-                 <Plus className="mr-2 h-5 w-5" /> {t("home.report_btn")}
-               </Button>
-             </Link>
+            <Link href="/report">
+              <Button size="lg" className={`bg-white text-primary hover:bg-blue-50 border-0 font-semibold shadow-lg ${language === 'kn' ? 'text-sm' : ''}`}>
+                <Plus className="mr-2 h-5 w-5" /> {t("home.report_btn")}
+              </Button>
+            </Link>
           </div>
         </div>
-        
+
         {/* Decorative background elements */}
         <div className="absolute right-0 top-0 h-64 w-64 bg-white opacity-10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
         <div className="absolute bottom-0 left-20 h-32 w-32 bg-blue-300 opacity-20 rounded-full blur-2xl"></div>
@@ -64,16 +64,16 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder={t("home.search_placeholder")} 
-              className="pl-9 bg-slate-50 border-slate-200" 
+            <Input
+              placeholder={t("home.search_placeholder")}
+              className="pl-9 bg-slate-50 border-slate-200"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          
+
           <div className="flex flex-wrap lg:flex-nowrap gap-2 items-center">
-            <Select value={filters.ward} onValueChange={(v) => setFilters({...filters, ward: v})}>
+            <Select value={filters.ward} onValueChange={(v) => setFilters({ ...filters, ward: v })}>
               <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("common.ward")} />
               </SelectTrigger>
@@ -85,7 +85,7 @@ export default function Home() {
               </SelectContent>
             </Select>
 
-            <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+            <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
               <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("common.status")} />
               </SelectTrigger>
@@ -97,7 +97,7 @@ export default function Home() {
               </SelectContent>
             </Select>
 
-            <Select value={filters.category} onValueChange={(v) => setFilters({...filters, category: v})}>
+            <Select value={filters.category} onValueChange={(v) => setFilters({ ...filters, category: v })}>
               <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
                 <SelectValue placeholder={t("report.category")} />
               </SelectTrigger>
@@ -112,10 +112,10 @@ export default function Home() {
             </Select>
 
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={() => refetch()} 
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refetch()}
                 className="bg-slate-50 shrink-0"
                 data-testid="button-refresh-issues"
               >
@@ -123,8 +123,8 @@ export default function Home() {
               </Button>
 
               {(search || filters.ward !== "all" || filters.category !== "all" || filters.status !== "all") && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
                     setFilters({ ward: 'all', category: 'all', status: 'all' });
@@ -143,7 +143,20 @@ export default function Home() {
       </div>
 
       {/* Content Grid */}
-      {isLoading ? (
+      {isError ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="bg-red-50 p-6 rounded-full mb-4">
+            <Filter className="h-10 w-10 text-red-400" />
+          </div>
+          <h3 className={`font-semibold text-slate-900 ${language === 'kn' ? 'text-lg' : 'text-xl'}`}>{t("common.error") || "Failed to load issues"}</h3>
+          <p className={`text-slate-500 max-w-sm mt-2 ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>
+            {error?.message || t("home.no_issues_desc")}
+          </p>
+          <Button className="mt-6" variant="outline" onClick={() => refetch()}>
+            {t("home.clear_filters")}
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex flex-col space-y-3">

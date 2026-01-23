@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   useSocket(); // Real-time updates
 
-  const { data: issues, isLoading } = useIssues(statusFilter !== "all" ? { status: statusFilter } : undefined);
+  const { data: issues, isLoading, isError, error } = useIssues(statusFilter !== "all" ? { status: statusFilter } : undefined);
 
   const handleStatusChange = async (id: number, status: string) => {
     const issue = issues?.find(i => i.id === id);
@@ -132,7 +132,9 @@ export default function AdminDashboard() {
 
       {/* Issues Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading ? (
+        {isError ? (
+          <p className="col-span-full text-center py-10 text-destructive">{error?.message || "Failed to load issues."}</p>
+        ) : isLoading ? (
           <p>Loading issues...</p>
         ) : filteredIssues?.length === 0 ? (
           <p className="col-span-full text-center py-10 text-slate-500">No issues found.</p>

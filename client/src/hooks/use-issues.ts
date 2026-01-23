@@ -16,7 +16,9 @@ export function useIssues(filters?: { ward?: string; status?: string; category?:
 
       const res = await fetch(withBase(url), { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch issues");
-      return api.issues.list.responses[200].parse(await res.json());
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+      return [];
     },
   });
 }

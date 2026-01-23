@@ -45,7 +45,7 @@ export default function MyIssuesPage() {
 
   if (isLoading || !user) return null;
 
-  const { data: issues, isLoading: issuesLoading, refetch } = useIssues(
+  const { data: issues, isLoading: issuesLoading, isError: issuesError, error: issuesErrorObj, refetch } = useIssues(
     statusFilter !== "all"
       ? { status: statusFilter } as any
       : undefined
@@ -122,7 +122,9 @@ export default function MyIssuesPage() {
 
       {/* Issues Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {issuesLoading ? (
+        {issuesError ? (
+          <p className="col-span-full text-center py-10 text-destructive">{issuesErrorObj?.message || t("common.error") || "Failed to load issues."}</p>
+        ) : issuesLoading ? (
           <p className="col-span-full text-center py-10 text-slate-500">{t("common.loading")}</p>
         ) : filteredIssues?.length === 0 ? (
           <p className={`col-span-full text-center py-10 text-slate-500 ${language === 'kn' ? 'text-sm' : ''}`}>
