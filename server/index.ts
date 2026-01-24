@@ -118,6 +118,21 @@ app.use(cors(corsOptions));
 // Enable automatic handling of preflight requests
 app.options("*", cors(corsOptions));
 
+// Security headers (conservative, production-safe)
+app.use((req, res, next) => {
+  // Prevent clickjacking
+  res.setHeader("X-Frame-Options", "DENY");
+  // Prevent MIME-type sniffing
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // Control referrer information
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Enforce HTTPS in production (Render terminates TLS)
+  if (isProduction) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  }
+  next();
+});
+
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -129,7 +144,11 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 
 export function log(message: string, source = "express") {
-  if (process.env.NODE_ENV === "production") return;
+  if (process.env.NODE_ENV === "production") {
+    // Production: minimal logging without timestamps
+    console.log(`[${source.toUpperCase()}] ${message}`);
+    return;
+  }
 
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -140,6 +159,19 @@ export function log(message: string, source = "express") {
 
   console.log(`${formattedTime} [${source}] ${message}`);
 }
+
+// Lightweight server-generated request ID for log correlation (no headers, no client impact)
+let __reqCounter = 0;
+function __genReqId() {
+  __reqCounter = (__reqCounter + 1) % 1000000;
+  return `${Date.now().toString(36)}-${__reqCounter.toString(36)}`;
+}
+
+// Assign request ID early in the lifecycle
+app.use((req, _res, next) => {
+  (req as any)._rid = __genReqId();
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -158,12 +190,17 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      if (process.env.NODE_ENV === "production") {
+        // Production: minimal request logging without response body
+        log(`${req.method} ${path} ${res.statusCode} ${duration}ms rid=${(req as any)._rid}`, "http");
+      } else {
+        // Development: detailed logging with response
+        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+        if (capturedJsonResponse) {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
+        log(`${logLine} rid=${(req as any)._rid}`);
       }
-
-      log(logLine);
     }
   });
 
@@ -177,7 +214,7 @@ app.use((req, res, next) => {
   io = result.io;
   sessionStore = result.sessionStore;
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
@@ -185,7 +222,8 @@ app.use((req, res, next) => {
     if (process.env.NODE_ENV !== "production") {
       console.error("Error:", err);
     } else {
-      console.error("Error:", message);
+      // Production: log error with request context
+      console.error(`[ERROR] ${req.method} ${req.path} ${status} — ${message} rid=${(req as any)._rid}`);
     }
 
     res.status(status).json({ message });

@@ -344,69 +344,84 @@ export class DatabaseStorage implements IStorage {
 
   // Analytics
   async getAnalytics(userId?: number, ward?: string, isSuperAdmin?: boolean) {
-    const filter: any = {};
+    const match: any = {};
 
     // Filter based on role
     if (userId && !isSuperAdmin && !ward) {
       // User: only their own issues (fallback if no ward)
-      filter.createdBy = userId;
+      match.createdBy = userId;
     } else if (ward && !isSuperAdmin) {
       // User/Admin: only their assigned ward
-      filter.ward = ward;
+      match.ward = ward;
     }
     // SuperAdmin: all issues (no filter)
 
-    const rawIssues = await IssueModel.find(filter).lean();
-    const allIssues = rawIssues.map(cleanObject) as typeof rawIssues;
+    // Use MongoDB aggregation to compute counts without loading all documents
+    const pipeline: any[] = [
+      { $match: match },
+      {
+        $facet: {
+          total: [{ $count: "count" }],
+          byStatus: [
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+          ],
+          byCategory: [
+            { $group: { _id: "$category", count: { $sum: 1 } } }
+          ],
+          byWard: [
+            { $group: { _id: "$ward", count: { $sum: 1 } } }
+          ],
+          byMonth: [
+            { $match: { createdAt: { $type: "date" } } },
+            { $group: { _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }, count: { $sum: 1 } } },
+          ],
+        },
+      },
+    ];
 
-    // Calculate statistics
-    const totalIssues = allIssues.length;
-    const pendingCount = allIssues.filter(i => i.status === "Pending").length;
-    const inProgressCount = allIssues.filter(i => i.status === "In Progress").length;
-    const resolvedCount = allIssues.filter(i => i.status === "Resolved").length;
+    const aggResult = await IssueModel.aggregate(pipeline);
+    const facet = aggResult[0] || { total: [], byStatus: [], byCategory: [], byWard: [], byMonth: [] };
+
+    const totalIssues = facet.total.length ? facet.total[0].count : 0;
+
+    // Status counts
+    const statusMap = new Map<string, number>(facet.byStatus.map((s: any) => [s._id, s.count]));
+    const pendingCount = statusMap.get("Pending") || 0;
+    const inProgressCount = statusMap.get("In Progress") || 0;
+    const resolvedCount = statusMap.get("Resolved") || 0;
 
     // Category distribution
-    const categoryDist: Record<string, number> = {};
-    allIssues.forEach(issue => {
-      categoryDist[issue.category] = (categoryDist[issue.category] || 0) + 1;
-    });
+    const categoryDistribution = (facet.byCategory as any[])
+      .filter((c) => c._id != null)
+      .map((c) => ({ name: c._id as string, value: c.count as number }));
 
-    // Ward-wise distribution
-    const wardDist: Record<string, number> = {};
-    allIssues.forEach(issue => {
-      wardDist[issue.ward] = (wardDist[issue.ward] || 0) + 1;
-    });
+    // Ward distribution
+    const wardDistribution = (facet.byWard as any[])
+      .filter((w) => w._id != null)
+      .map((w) => ({ name: w._id as string, value: w.count as number }));
 
     // Monthly trend (last 12 months)
-    const monthlyTrend: Record<string, number> = {};
+    const monthlyCounts = new Map<string, number>();
+    (facet.byMonth as any[]).forEach((m) => monthlyCounts.set(m._id as string, m.count as number));
+
+    const monthlyTrend: Array<{ month: string; count: number }> = [];
     const now = new Date();
     for (let i = 11; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-      monthlyTrend[monthKey] = 0;
+      const ymKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const label = date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+      const count = monthlyCounts.get(ymKey) || 0;
+      monthlyTrend.push({ month: label, count });
     }
-
-    allIssues.forEach(issue => {
-      const createdAt = issue.createdAt;
-      if (createdAt) {
-        const issueDate = new Date(createdAt);
-        if (!Number.isNaN(issueDate.getTime())) {
-          const monthKey = issueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-          if (monthlyTrend.hasOwnProperty(monthKey)) {
-            monthlyTrend[monthKey]++;
-          }
-        }
-      }
-    });
 
     return {
       totalIssues,
       pendingCount,
       inProgressCount,
       resolvedCount,
-      categoryDistribution: Object.entries(categoryDist).map(([name, value]) => ({ name, value })),
-      wardDistribution: Object.entries(wardDist).map(([name, value]) => ({ name, value })),
-      monthlyTrend: Object.entries(monthlyTrend).map(([month, count]) => ({ month, count })),
+      categoryDistribution,
+      wardDistribution,
+      monthlyTrend,
     };
   }
 }

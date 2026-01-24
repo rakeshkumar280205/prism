@@ -81,6 +81,8 @@ export async function registerRoutes(
     ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean)
     : true;
 
+  let sessionMiddleware: ReturnType<typeof session> | null = null;
+
   if (process.env.NODE_ENV === "production" && Array.isArray(socketAllowedOrigins) && socketAllowedOrigins.length === 0) {
     console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for Socket.IO CORS.");
     process.exit(1);
@@ -105,10 +107,101 @@ export async function registerRoutes(
     },
   });
 
-  io.on("connection", (socket) => {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("New client connected", socket.id);
+  // Attach session auth to sockets once session middleware is available
+  // Generous per-IP connection throttle to prevent flood abuse (no protocol change)
+  const SOCKET_CONNECT_WINDOW_MS = 60_000; // 60 seconds
+  const SOCKET_CONNECT_MAX_PER_IP = 60; // generous cap per minute
+  const __socketConnectHistory = new Map<string, number[]>();
+
+  function getSocketClientIp(socket: any): string {
+    const xfwd = socket.handshake?.headers?.["x-forwarded-for"];
+    if (typeof xfwd === "string" && xfwd.length > 0) {
+      return xfwd.split(",")[0].trim();
     }
+    return socket.handshake?.address || "unknown";
+  }
+
+  io.use((socket, next) => {
+    const ip = getSocketClientIp(socket);
+    const now = Date.now();
+    const history = __socketConnectHistory.get(ip) || [];
+    const recent = history.filter((ts) => now - ts <= SOCKET_CONNECT_WINDOW_MS);
+    recent.push(now);
+    if (recent.length === 0) {
+      // Cleanup empty entries to prevent unbounded map growth
+      __socketConnectHistory.delete(ip);
+    } else {
+      __socketConnectHistory.set(ip, recent);
+    }
+
+    if (recent.length > SOCKET_CONNECT_MAX_PER_IP) {
+      // Log reason only (avoid PII like IP addresses)
+      console.warn(`[SOCKET] connection throttled — ${recent.length}/${SOCKET_CONNECT_MAX_PER_IP} in ${SOCKET_CONNECT_WINDOW_MS / 1000}s`);
+      return next(new Error("Too many connections"));
+    }
+    next();
+  });
+
+  // Attach session auth to sockets once session middleware is available
+  io.use((socket, next) => {
+    if (!sessionMiddleware) return next(new Error("Session not initialized"));
+    sessionMiddleware(socket.request as any, {} as any, () => {
+      const req = socket.request as any;
+      const passportUser = req.session?.passport?.user;
+      if (!passportUser) {
+        const err: any = new Error("Unauthorized");
+        err.data = { message: "Unauthorized socket" };
+        return next(err);
+      }
+      req.authUser = passportUser;
+      return next();
+    });
+  });
+
+  io.on("connection", (socket) => {
+    const req = socket.request as any;
+    const authUser = req?.authUser;
+
+    (async () => {
+      try {
+        if (!authUser) {
+          socket.disconnect(true);
+          return;
+        }
+
+        if (authUser.type === "user") {
+          const user = await storage.getUser(authUser.id);
+          if (!user) {
+            socket.disconnect(true);
+            return;
+          }
+          socket.join(`user:${user.id}`);
+        } else if (authUser.type === "admin") {
+          const admin = await storage.getAdmin(authUser.id);
+          if (!admin) {
+            socket.disconnect(true);
+            return;
+          }
+          socket.join(`admin:${admin.id}`);
+          if (admin.wardAssigned) {
+            socket.join(`ward:${admin.wardAssigned}`);
+          }
+          if (admin.role === "SUPER_ADMIN") {
+            socket.join("role:super_admin");
+          }
+        } else {
+          socket.disconnect(true);
+          return;
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+          console.log("New client connected", socket.id);
+        }
+      } catch (err) {
+        console.error("[SOCKET] auth failed —", err instanceof Error ? err.message : "unknown error");
+        socket.disconnect(true);
+      }
+    })().catch(() => socket.disconnect(true));
 
     // Handle socket errors to prevent silent failures
     socket.on("error", (error) => {
@@ -121,6 +214,13 @@ export async function registerRoutes(
       }
     });
   });
+
+  const emitIssueScoped = (event: string, payload: any, ward?: string | number) => {
+    if (ward) {
+      io.to(`ward:${ward}`).emit(event, payload);
+    }
+    io.to("role:super_admin").emit(event, payload);
+  };
 
   // Session Setup
   const isProduction = process.env.NODE_ENV === "production";
@@ -166,23 +266,71 @@ export async function registerRoutes(
     healthState.lastSessionError = new Error("Session store disconnected");
   });
 
-  app.use(
-    session({
-      secret: sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      store: sessionStore,
-      cookie: {
-        httpOnly: true,
-        sameSite: isProduction ? "none" : "lax", // "none" required for cross-origin (Vercel → Render)
-        secure: isProduction, // Must be true in production when sameSite=none
-        maxAge: sessionMaxAgeMs,
-      },
-    })
-  );
+  sessionMiddleware = session({
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+      httpOnly: true,
+      sameSite: isProduction ? "none" : "lax", // "none" required for cross-origin (Vercel → Render)
+      secure: isProduction, // Must be true in production when sameSite=none
+      maxAge: sessionMaxAgeMs,
+    },
+  });
+
+  app.use(sessionMiddleware);
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Apply global API limiter to all /api routes (skips safe methods)
+  app.use("/api", globalApiLimiter);
+
+  // CSRF protection middleware (Origin/Referer validation for state-changing requests)
+  const csrfAllowedOrigins = isProduction
+    ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean)
+    : ["http://localhost:5173", "http://localhost:3000"];
+
+  const csrfExcludedPaths = new Set([
+    api.auth.loginUser.path,
+    api.auth.loginAdmin.path,
+    api.users.register.path,
+    api.auth.logout.path, // optional exclusion per requirements
+  ]);
+
+  app.use((req, res, next) => {
+    const method = req.method.toUpperCase();
+    // Only protect state-changing methods
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS") return next();
+    // Do not interfere with Socket.IO transports
+    if (req.path.startsWith("/socket.io")) return next();
+    // Exclude selected auth routes (match by originalUrl without query, prefix-safe)
+    const originalUrl = req.originalUrl as string | undefined;
+    const pathname = originalUrl ? originalUrl.split("?")[0] : req.path;
+    if ([...csrfExcludedPaths].some((p) => pathname.startsWith(p))) return next();
+
+    const origin = (req.headers.origin as string | undefined) || undefined;
+    let checkOrigin = origin;
+
+    // Fallback to Referer if Origin missing
+    if (!checkOrigin) {
+      const referer = req.headers.referer as string | undefined;
+      if (referer) {
+        try {
+          checkOrigin = new URL(referer).origin;
+        } catch {
+          // ignore invalid referer format
+        }
+      }
+    }
+
+    if (!checkOrigin || !csrfAllowedOrigins.includes(checkOrigin)) {
+      return res.status(403).json({ message: "Forbidden: invalid request origin" });
+    }
+
+    return next();
+  });
 
   // Passport Strategies
   // 1. User Strategy (Mobile/Password)
@@ -259,6 +407,89 @@ export async function registerRoutes(
     legacyHeaders: false,
   });
 
+  // Global fallback rate limiter for /api (non-GET) to mitigate floods
+  const globalApiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 150,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
+    message: { message: "Too many requests, please slow down" },
+  });
+
+  // Per-route rate limiters (generous, additive)
+  const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many registrations, please try later" },
+  });
+
+  const createAdminLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many admin creations, please try later" },
+  });
+
+  const updateAdminLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many admin updates, please try later" },
+  });
+
+  const deleteAdminLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many admin deletions, please try later" },
+  });
+
+  const issueStatusLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many status updates, please try later" },
+  });
+
+  const issueUpdateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many issue updates, please try later" },
+  });
+
+  const issueDeleteLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many issue deletions, please try later" },
+  });
+
+  const issueVoteLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many votes, please slow down" },
+  });
+
+  const analyticsLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many analytics requests, please try later" },
+  });
+
   app.post(api.auth.loginUser.path, loginLimiter, (req, res, next) => {
     passport.authenticate("user-local", (err: any, user: any, info: any) => {
       if (err) return next(err);
@@ -323,7 +554,7 @@ export async function registerRoutes(
 
   // === User Routes ===
 
-  app.post(api.users.register.path, async (req, res) => {
+  app.post(api.users.register.path, registerLimiter, async (req, res) => {
     try {
       const input = api.users.register.input.parse(req.body);
       const existing = await storage.getUserByMobile(input.mobile);
@@ -359,7 +590,7 @@ export async function registerRoutes(
 
   // === Admin Routes ===
 
-  app.post(api.admins.create.path, async (req, res) => {
+  app.post(api.admins.create.path, createAdminLimiter, async (req, res) => {
     // Only Super Admin can create admins
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
     try {
@@ -408,7 +639,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.admins.update.path, async (req, res) => {
+  app.put(api.admins.update.path, updateAdminLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
     try {
       const adminId = Number(req.params.id);
@@ -429,7 +660,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.admins.delete.path, async (req, res) => {
+  app.delete(api.admins.delete.path, deleteAdminLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "SUPER_ADMIN") return res.status(403).json({ message: "Forbidden" });
     try {
       const adminId = Number(req.params.id);
@@ -547,7 +778,7 @@ export async function registerRoutes(
           // Update issue with image URL
           const updatedIssue = await storage.updateIssue(issue.id, { image: uploadResult.url });
           if (!updatedIssue) return res.status(404).json({ message: "Issue not found" });
-          io.emit("issue:new", { id: updatedIssue.id }); // Real-time (id-only to avoid leaking other wards)
+          emitIssueScoped("issue:new", { id: updatedIssue.id }, updatedIssue.ward); // Scoped emit
           res.status(201).json(updatedIssue);
           return;
         } catch (uploadError) {
@@ -580,7 +811,7 @@ export async function registerRoutes(
         }
       }
 
-      io.emit("issue:new", { id: issue.id }); // Real-time (id-only to avoid leaking other wards)
+      emitIssueScoped("issue:new", { id: issue.id }, issue.ward); // Scoped emit
       console.log("[UPLOAD:NO_IMAGE] No image provided, issue created without image", { issueId: issue.id });
       res.status(201).json(issue);
     } catch (err) {
@@ -589,7 +820,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch(api.issues.updateStatus.path, async (req, res) => {
+  app.patch(api.issues.updateStatus.path, issueStatusLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "admin") return res.status(403).json({ message: "Forbidden" });
     try {
       const user = (req.user as any);
@@ -623,14 +854,14 @@ export async function registerRoutes(
         details: `Updated issue status to ${status}`,
       });
 
-      io.emit("issue:update", { id: updatedIssue.id }); // Real-time (id-only)
+      emitIssueScoped("issue:update", { id: updatedIssue.id }, issue.ward); // Scoped emit
       res.json(updatedIssue);
     } catch (err) {
       res.status(500).json({ message: "Update failed" });
     }
   });
 
-  app.patch(api.issues.update.path, upload.single("image"), imageUploadLimiter, async (req, res) => {
+  app.patch(api.issues.update.path, upload.single("image"), issueUpdateLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized" });
     try {
       const issueId = Number(req.params.id);
@@ -682,7 +913,7 @@ export async function registerRoutes(
       const updated = await storage.updateIssue(issueId, updates);
       if (!updated) return res.status(404).json({ message: "Issue not found" });
 
-      io.emit("issue:update", { id: updated?.id }); // Real-time (id-only)
+      emitIssueScoped("issue:update", { id: updated?.id }, updated?.ward); // Scoped emit
       res.json(updated);
 
       // Cleanup old Cloudinary image after response sent (prevents orphaned resources)
@@ -709,7 +940,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.issues.delete.path, async (req, res) => {
+  app.delete(api.issues.delete.path, issueDeleteLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     try {
       const issueId = Number(req.params.id);
@@ -741,7 +972,7 @@ export async function registerRoutes(
         });
       }
 
-      io.emit("issue:delete", { id: issueId });
+      emitIssueScoped("issue:delete", { id: issueId }, issue.ward);
       res.status(204).end();
 
       // Cleanup Cloudinary folder after response sent (prevents orphaned resources)
@@ -764,18 +995,20 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.issues.vote.path, async (req, res) => {
+  app.post(api.issues.vote.path, issueVoteLimiter, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).type !== "user") return res.status(401).json({ message: "Unauthorized. Only users can vote." });
     try {
-      const result = await storage.toggleVote(Number(req.params.id), (req.user as any).id);
-      io.emit("issue:vote", { id: Number(req.params.id), votes: result.votes });
+      const issueId = Number(req.params.id);
+      const issue = await storage.getIssue(issueId);
+      const result = await storage.toggleVote(issueId, (req.user as any).id);
+      emitIssueScoped("issue:vote", { id: issueId, votes: result.votes }, issue?.ward);
       res.json(result);
     } catch (err) {
       res.status(500).json({ message: "Vote failed" });
     }
   });
 
-  app.get(api.issues.analytics.path, async (req, res) => {
+  app.get(api.issues.analytics.path, analyticsLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     try {
       const user = (req.user as any);
