@@ -81,6 +81,11 @@ export async function registerRoutes(
     ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean)
     : true;
 
+  if (process.env.NODE_ENV === "production" && Array.isArray(socketAllowedOrigins) && socketAllowedOrigins.length === 0) {
+    console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for Socket.IO CORS.");
+    process.exit(1);
+  }
+
   const io = new SocketIOServer(httpServer, {
     path: "/socket.io",
     cors: {
@@ -91,7 +96,7 @@ export async function registerRoutes(
         if (socketAllowedOrigins === true) return callback(null, true);
         // In production, check allowlist
         if (Array.isArray(socketAllowedOrigins) && socketAllowedOrigins.includes(origin)) {
-          return callback(null, true);
+          return callback(null, origin);
         }
         // Silently deny unknown origins (no thrown error)
         callback(null, false);

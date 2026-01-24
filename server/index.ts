@@ -96,11 +96,17 @@ const allowedOrigins = isProduction
   ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean) as string[]
   : devOrigins;
 
+// Fail fast if production origins are not configured (prevents silent CORS denial and missing cookies)
+if (isProduction && allowedOrigins.length === 0) {
+  console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for CORS/cookies in production.");
+  process.exit(1);
+}
+
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean | string) => void) => {
     // Allow requests without Origin (server-to-server, curl) and same-origin
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, origin);
     // Silently reject unknown origins without throwing an error
     // This prevents error logs in production while still rejecting CORS requests
     callback(null, false);
