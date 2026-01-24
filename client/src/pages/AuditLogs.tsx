@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { type AuditLog } from "@/schemas";
 import {
   Table,
@@ -17,20 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AuditLogs() {
   const { admin, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
 
   // Fetch logs only after auth is confirmed and user is super-admin
   const { data: logs, isLoading: logsLoading } = useQuery<AuditLog[]>({
     queryKey: ["/api/audit-logs"],
     enabled: !isLoading && !!admin && admin.role === "SUPER_ADMIN",
   });
-
-  // Redirect if not super-admin after auth loading completes
-  useEffect(() => {
-    if (!isLoading && (!admin || admin.role !== "SUPER_ADMIN")) {
-      setLocation("/");
-    }
-  }, [isLoading, admin, setLocation]);
 
   // Show loading state during auth rehydration
   if (isLoading) {

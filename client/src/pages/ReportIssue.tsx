@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useCreateIssue } from "@/hooks/use-issues";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,16 +19,8 @@ export default function ReportIssue() {
   const { language, t } = useI18n();
   const { user, isLoading } = useAuth();
   const createIssue = useCreateIssue();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Redirect if not logged in after auth loading completes
-  useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/");
-    }
-  }, [isLoading, user, setLocation]);
 
   // Show loading state during auth rehydration
   if (isLoading) {
@@ -128,7 +120,6 @@ export default function ReportIssue() {
         title: t("report.success"),
         description: t("report.success_desc"),
       });
-      setLocation("/home");
     } catch (err: any) {
       toast({
         title: "Submission Failed",
@@ -314,9 +305,11 @@ export default function ReportIssue() {
             )}
 
             <div className="pt-4 flex gap-4">
-              <Button type="button" variant="outline" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} onClick={() => setLocation("/home")}>
-                {t("report.cancel")}
-              </Button>
+              <Link href="/home" className="flex-1">
+                <Button type="button" variant="outline" className={`w-full ${language === 'kn' ? 'text-xs' : ''}`}>
+                  {t("report.cancel")}
+                </Button>
+              </Link>
               <Button type="submit" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} disabled={createIssue.isPending}>
                 {createIssue.isPending ? t("report.submitting") : t("report.submit")}
               </Button>

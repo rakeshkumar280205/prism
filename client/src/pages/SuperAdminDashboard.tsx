@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { useAdmins } from "@/hooks/use-admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,6 @@ import {
 
 export default function SuperAdminDashboard() {
   const { admin, isLoading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const { admins, isLoading: adminsLoading, createAdmin, updateAdmin, deleteAdmin } = useAdmins();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -40,13 +38,6 @@ export default function SuperAdminDashboard() {
     wardAssigned: "",
     role: "ADMIN",
   });
-
-  // Redirect only after auth resolves
-  useEffect(() => {
-    if (!authLoading && admin && admin.role !== "SUPER_ADMIN") {
-      setLocation("/admin/dashboard");
-    }
-  }, [authLoading, admin, setLocation]);
 
   if (authLoading) {
     return <div className="p-8 text-center text-slate-600">Loading...</div>;

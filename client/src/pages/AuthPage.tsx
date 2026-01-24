@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,15 +14,8 @@ import prismLogo from "@assets/image_1767338273702.jpeg";
 
 export default function AuthPage() {
   const { loginUser, loginAdmin, user, admin } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language, t } = useI18n();
-
-  // Redirect if already logged in using useEffect
-  useEffect(() => {
-    if (user) setLocation("/home");
-    if (admin) setLocation("/admin/dashboard");
-  }, [user, admin, setLocation]);
 
   const [userCreds, setUserCreds] = useState({ mobile: "", password: "" });
   const [adminCreds, setAdminCreds] = useState({ adminId: "", password: "" });
@@ -67,13 +60,13 @@ export default function AuthPage() {
         <div className="z-10 max-w-lg space-y-6">
           <h2 className="text-4xl font-display font-bold leading-tight">
             {language === 'en' ? (
-              <>Bengaluru Prism.<br/>Civic Engagement Platform.</>
+              <>Bengaluru Prism.<br />Civic Engagement Platform.</>
             ) : (
-              <>ಬೆಂಗಳೂರು ಪ್ರಿಸಮ್.<br/>ನಾಗರಿಕ ಸಹಭಾಗಿತ್ವದ ವೇದಿಕೆ.</>
+              <>ಬೆಂಗಳೂರು ಪ್ರಿಸಮ್.<br />ನಾಗರಿಕ ಸಹಭಾಗಿತ್ವದ ವೇದಿಕೆ.</>
             )}
           </h2>
           <p className="text-lg text-primary-foreground/80">
-            {language === 'en' 
+            {language === 'en'
               ? "A transparent lens into civic issues. Report problems, track resolutions, and help build a better city together."
               : "ನಾಗರಿಕ ಸಮಸ್ಯೆಗಳ ಮೇಲೆ ಪಾರದರ್ಶಕ ದೃಷ್ಟಿ. ಸಮಸ್ಯೆಗಳನ್ನು ವರದಿ ಮಾಡಿ, ಪರಿಹಾರಗಳನ್ನು ಗಮನಿಸಿ ಮತ್ತು ಒಟ್ಟಾಗಿ ಉತ್ತಮ ನಗರವನ್ನು ನಿರ್ಮಿಸಲು ಸಹಾಯ ಮಾಡಿ."
             }
@@ -120,13 +113,13 @@ export default function AuthPage() {
                   <form onSubmit={handleUserLogin} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="mobile" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.mobile")}</Label>
-                      <Input 
-                        id="mobile" 
-                        placeholder="e.g. 9876543210" 
+                      <Input
+                        id="mobile"
+                        placeholder="e.g. 9876543210"
                         value={userCreds.mobile}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          setUserCreds({...userCreds, mobile: value});
+                          setUserCreds({ ...userCreds, mobile: value });
                         }}
                         maxLength={10}
                         inputMode="numeric"
@@ -138,12 +131,12 @@ export default function AuthPage() {
                     <div className="space-y-2">
                       <Label htmlFor="password" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.password")}</Label>
                       <div className="relative">
-                        <Input 
-                          id="password" 
-                          type={showUserPassword ? "text" : "password"} 
-                          placeholder="••••••••" 
+                        <Input
+                          id="password"
+                          type={showUserPassword ? "text" : "password"}
+                          placeholder="••••••••"
                           value={userCreds.password}
-                          onChange={(e) => setUserCreds({...userCreds, password: e.target.value})}
+                          onChange={(e) => setUserCreds({ ...userCreds, password: e.target.value })}
                           required
                           className="h-11 pr-10"
                           data-testid="input-user-password"
@@ -164,13 +157,13 @@ export default function AuthPage() {
                       {loginUser.isPending ? t("common.loading") : t("auth.login")}
                     </Button>
                     <div className="text-center text-sm text-muted-foreground mt-4">
-                      {t("auth.no_account")}{" "}
-                      <span 
+                      {t("auth.no_account")} {" "}
+                      <Link
+                        href="/register"
                         className="text-primary hover:underline cursor-pointer font-medium"
-                        onClick={() => setLocation("/register")}
                       >
                         {t("auth.register")}
-                      </span>
+                      </Link>
                     </div>
                   </form>
                 </CardContent>
@@ -187,11 +180,11 @@ export default function AuthPage() {
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="adminId" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.admin_id")}</Label>
-                      <Input 
-                        id="adminId" 
-                        placeholder="e.g. ADM-2024-001" 
+                      <Input
+                        id="adminId"
+                        placeholder="e.g. ADM-2024-001"
                         value={adminCreds.adminId}
-                        onChange={(e) => setAdminCreds({...adminCreds, adminId: e.target.value})}
+                        onChange={(e) => setAdminCreds({ ...adminCreds, adminId: e.target.value })}
                         required
                         className="h-11 font-mono text-sm"
                       />
@@ -199,11 +192,11 @@ export default function AuthPage() {
                     <div className="space-y-2">
                       <Label htmlFor="adminPass" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("auth.password")}</Label>
                       <div className="relative">
-                        <Input 
-                          id="adminPass" 
-                          type={showAdminPassword ? "text" : "password"} 
+                        <Input
+                          id="adminPass"
+                          type={showAdminPassword ? "text" : "password"}
                           value={adminCreds.password}
-                          onChange={(e) => setAdminCreds({...adminCreds, password: e.target.value})}
+                          onChange={(e) => setAdminCreds({ ...adminCreds, password: e.target.value })}
                           required
                           className="h-11 pr-10"
                           data-testid="input-admin-password"

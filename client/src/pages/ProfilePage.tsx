@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import { useI18n } from "@/lib/i18n";
 export default function ProfilePage() {
   const { language, t } = useI18n();
   const { user, updateProfile, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -25,10 +23,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/");
-      return;
-    }
+    if (isLoading || !user) return;
     setFormData({
       name: user?.name || "",
       email: user?.email || "",
@@ -36,7 +31,7 @@ export default function ProfilePage() {
       ward: user?.ward || "",
     });
     setIsEditing(false);
-  }, [isLoading, user, setLocation]);
+  }, [isLoading, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

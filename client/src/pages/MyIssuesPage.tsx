@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +7,7 @@ import { useIssues } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Edit2, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { EditIssueDialog } from "@/components/EditIssueDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -28,7 +27,6 @@ import {
 export default function MyIssuesPage() {
   const { language, t } = useI18n();
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [editingIssue, setEditingIssue] = useState<any>(null);
@@ -36,12 +34,6 @@ export default function MyIssuesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   useSocket(); // Real-time updates
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      setLocation("/");
-    }
-  }, [isLoading, user, setLocation]);
 
   if (isLoading) {
     return <div className="p-8 text-center text-slate-600">Loading...</div>;

@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -24,19 +23,11 @@ const COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#EC4899"
 export default function AnalyticsPage() {
   const { language, t } = useI18n();
   const { user, admin, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // HOOK CALL MUST COME BEFORE ANY EARLY RETURNS (React Rules of Hooks)
   const socket = useSocket({ enabled: !isLoading && (!!user || !!admin) });
-
-  // Check authentication after auth finishes loading
-  useEffect(() => {
-    if (!isLoading && !user && !admin) {
-      setLocation("/");
-    }
-  }, [isLoading, user, admin, setLocation]);
 
   if (isLoading) {
     return <div className="p-8 text-center text-slate-600">Loading...</div>;

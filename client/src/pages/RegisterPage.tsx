@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { useI18n } from "@/lib/i18n";
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language, t } = useI18n();
 
@@ -33,7 +32,6 @@ export default function RegisterPage() {
         title: t("reg.success"),
         description: "Please login with your credentials.",
       });
-      setLocation("/");
     } catch (err: any) {
       toast({
         title: t("reg.failed"),
@@ -48,38 +46,38 @@ export default function RegisterPage() {
       <Card className="w-full max-w-2xl shadow-xl border-slate-200">
         <CardHeader className="space-y-2 border-b bg-white rounded-t-xl pb-6">
           <div className="flex items-center gap-4 mb-2">
-             <Link href="/" className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
-               <ChevronLeft className="h-5 w-5 text-slate-500" />
-             </Link>
-             <div>
-               <CardTitle className={`font-display text-slate-900 ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("reg.title")}</CardTitle>
-               <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.subtitle")}</CardDescription>
-             </div>
+            <Link href="/" className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
+              <ChevronLeft className="h-5 w-5 text-slate-500" />
+            </Link>
+            <div>
+              <CardTitle className={`font-display text-slate-900 ${language === 'kn' ? 'text-xl' : 'text-2xl'}`}>{t("reg.title")}</CardTitle>
+              <CardDescription className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.subtitle")}</CardDescription>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="name" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.name")} <span className="text-red-500">*</span></Label>
-              <Input 
-                id="name" 
-                required 
+              <Input
+                id="name"
+                required
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="John Doe"
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="mobile" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.mobile")} <span className="text-red-500">*</span></Label>
-              <Input 
-                id="mobile" 
-                required 
+              <Input
+                id="mobile"
+                required
                 type="tel"
                 value={formData.mobile}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setFormData({...formData, mobile: value});
+                  setFormData({ ...formData, mobile: value });
                 }}
                 placeholder="9876543210"
                 maxLength={10}
@@ -90,20 +88,20 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="email" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.email")}</Label>
-              <Input 
-                id="email" 
-                type="email" 
+              <Input
+                id="email"
+                type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="ward" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.ward")} <span className="text-red-500">*</span></Label>
-              <Input 
-                id="ward" 
-                required 
+              <Input
+                id="ward"
+                required
                 type="number"
                 min="1"
                 max="200"
@@ -112,7 +110,7 @@ export default function RegisterPage() {
                   const value = e.target.value;
                   const num = value ? parseInt(value) : "";
                   if (num === "" || (num >= 1 && num <= 200)) {
-                    setFormData({...formData, ward: String(num === "" ? "" : num)});
+                    setFormData({ ...formData, ward: String(num === "" ? "" : num) });
                   }
                 }}
                 placeholder="Enter ward number (1-200)"
@@ -123,10 +121,10 @@ export default function RegisterPage() {
 
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="address" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.address")}</Label>
-              <Input 
-                id="address" 
+              <Input
+                id="address"
                 value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="House No, Street, Landmark"
               />
             </div>
@@ -134,13 +132,13 @@ export default function RegisterPage() {
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="password" className={language === 'kn' ? 'text-xs' : 'text-sm'}>{t("reg.create_password")} <span className="text-red-500">*</span></Label>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  required 
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
                   minLength={6}
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder={t("reg.min_chars")}
                   className="pr-10"
                   data-testid="input-password"

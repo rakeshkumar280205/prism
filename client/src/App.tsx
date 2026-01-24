@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import { I18nContext, Language, translations } from "./lib/i18n";
 import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Pages
 import AuthPage from "@/pages/AuthPage";
@@ -68,14 +69,46 @@ function Router() {
       <Switch>
         <Route path="/" component={AuthPage} />
         <Route path="/register" component={RegisterPage} />
-        <Route path="/home" component={Home} />
-        <Route path="/report" component={ReportIssue} />
-        <Route path="/my-issues" component={MyIssuesPage} />
-        <Route path="/analytics" component={AnalyticsPage} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route path="/admin/dashboard" component={AdminDashboard} />
-        <Route path="/super-admin/dashboard" component={SuperAdminDashboard} />
-        <Route path="/super-admin/audit-logs" component={AuditLogs} />
+        <Route path="/home">
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/report">
+          <ProtectedRoute>
+            <ReportIssue />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/my-issues">
+          <ProtectedRoute>
+            <MyIssuesPage />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/analytics">
+          <ProtectedRoute>
+            <AnalyticsPage />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/profile">
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/admin/dashboard">
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/super-admin/dashboard">
+          <ProtectedRoute>
+            <SuperAdminDashboard />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/super-admin/audit-logs">
+          <ProtectedRoute>
+            <AuditLogs />
+          </ProtectedRoute>
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

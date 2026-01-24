@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useIssues, useUpdateIssueStatus, useDeleteIssue } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +11,6 @@ import { Search, BarChart3, PieChart, Users, CheckCircle2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { admin, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const updateStatus = useUpdateIssueStatus();
@@ -21,13 +19,6 @@ export default function AdminDashboard() {
 
   // Call socket hook unconditionally; only connect when auth is confirmed
   useSocket({ enabled: !isLoading && !!admin });
-
-  // Redirect only after auth finishes loading
-  useEffect(() => {
-    if (!isLoading && !admin) {
-      setLocation("/");
-    }
-  }, [isLoading, admin, setLocation]);
 
   // Show loading state during auth rehydration
   if (isLoading) {

@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useIssues } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +14,6 @@ import { useI18n } from "@/lib/i18n";
 export default function Home() {
   const { language, t } = useI18n();
   const { user, admin, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
   const [filters, setFilters] = useState({
     ward: "all",
     category: "all",
@@ -25,13 +23,6 @@ export default function Home() {
 
   // HOOK CALL MUST COME BEFORE ANY EARLY RETURNS (React Rules of Hooks)
   useSocket({ enabled: !isLoading && (!!user || !!admin) });
-
-  // Redirect if not authenticated after auth loading completes
-  useEffect(() => {
-    if (!isLoading && !user && !admin) {
-      setLocation("/");
-    }
-  }, [isLoading, user, admin, setLocation]);
 
   // Show loading state during auth rehydration
   if (isLoading) {
