@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/Layout";
 import { I18nContext, Language, translations } from "./lib/i18n";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
 
 // Pages
 import AuthPage from "@/pages/AuthPage";
@@ -19,6 +19,48 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import SuperAdminDashboard from "@/pages/SuperAdminDashboard";
 import AuditLogs from "@/pages/AuditLogs";
 import NotFound from "@/pages/not-found";
+
+// Error Boundary to prevent blank pages from crashes
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Error Boundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="max-w-md text-center">
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">Something went wrong</h1>
+            <p className="text-slate-600 mb-4">An unexpected error occurred. Please try refreshing the page.</p>
+            <button
+              onClick={() => window.location.href = "/"}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function Router() {
   return (
@@ -57,14 +99,16 @@ function App() {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <I18nContext.Provider value={{ language, setLanguage, t }}>
-          <Router />
-          <Toaster />
-        </I18nContext.Provider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <I18nContext.Provider value={{ language, setLanguage, t }}>
+            <Router />
+            <Toaster />
+          </I18nContext.Provider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

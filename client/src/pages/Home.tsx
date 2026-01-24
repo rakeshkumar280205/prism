@@ -23,6 +23,9 @@ export default function Home() {
   });
   const [search, setSearch] = useState("");
 
+  // HOOK CALL MUST COME BEFORE ANY EARLY RETURNS (React Rules of Hooks)
+  useSocket({ enabled: !isLoading && (!!user || !!admin) });
+
   // Redirect if not authenticated after auth loading completes
   useEffect(() => {
     if (!isLoading && !user && !admin) {
@@ -47,9 +50,6 @@ export default function Home() {
       </div>
     );
   }
-
-  // Listen for real-time updates (enabled only when authenticated)
-  useSocket({ enabled: !isLoading && (!!user || !!admin) });
 
   const queryFilters = {
     ...(filters.ward !== "all" && { ward: filters.ward }),

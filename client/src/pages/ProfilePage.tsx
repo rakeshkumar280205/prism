@@ -25,16 +25,15 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!user) {
+    if (!isLoading && !user) {
       setLocation("/");
       return;
     }
     setFormData({
-      name: user.name || "",
-      email: user.email || "",
-      address: user.address || "",
-      ward: user.ward || "",
+      name: user?.name || "",
+      email: user?.email || "",
+      address: user?.address || "",
+      ward: user?.ward || "",
     });
     setIsEditing(false);
   }, [isLoading, user, setLocation]);

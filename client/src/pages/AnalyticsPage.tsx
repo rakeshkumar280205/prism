@@ -28,6 +28,9 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // HOOK CALL MUST COME BEFORE ANY EARLY RETURNS (React Rules of Hooks)
+  const socket = useSocket({ enabled: !isLoading && (!!user || !!admin) });
+
   // Check authentication after auth finishes loading
   useEffect(() => {
     if (!isLoading && !user && !admin) {
@@ -42,9 +45,6 @@ export default function AnalyticsPage() {
   if (!user && !admin) {
     return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
   }
-
-  // Gate socket connection: only enable when authenticated
-  const socket = useSocket({ enabled: !isLoading && (!!user || !!admin) });
 
   // Fetch analytics only after auth is confirmed
   useEffect(() => {
