@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import { useI18n } from "@/lib/i18n";
 import prismLogo from "@assets/image_1767338273702.jpeg";
 
 export default function AuthPage() {
-  const { loginUser, loginAdmin, user, admin } = useAuth();
+  const { loginUser, loginAdmin, user, admin, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { language, t } = useI18n();
 
@@ -21,6 +22,13 @@ export default function AuthPage() {
   const [adminCreds, setAdminCreds] = useState({ adminId: "", password: "" });
   const [showUserPassword, setShowUserPassword] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
+
+  // Redirect to /home after successful login
+  useEffect(() => {
+    if (!isLoading && (user || admin)) {
+      setLocation("/home");
+    }
+  }, [isLoading, user, admin, setLocation]);
 
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
