@@ -215,11 +215,11 @@ export async function registerRoutes(
     });
   });
 
-  const emitIssueScoped = (event: string, payload: any, ward?: string | number) => {
+  const emitIssueScoped = (ioServer: any, event: string, payload: any, ward?: string | number) => {
     if (ward) {
-      io.to(`ward:${ward}`).emit(event, payload);
+      ioServer.to(`ward:${ward}`).emit(event, payload);
     }
-    io.to("role:super_admin").emit(event, payload);
+    ioServer.to("role:super_admin").emit(event, payload);
   };
 
   // Session Setup
@@ -778,7 +778,7 @@ export async function registerRoutes(
           // Update issue with image URL
           const updatedIssue = await storage.updateIssue(issue.id, { image: uploadResult.url });
           if (!updatedIssue) return res.status(404).json({ message: "Issue not found" });
-          emitIssueScoped("issue:new", { id: updatedIssue.id }, updatedIssue.ward); // Scoped emit
+          emitIssueScoped(io, "issue:new", { id: updatedIssue.id }, updatedIssue.ward); // Scoped emit
           res.status(201).json(updatedIssue);
           return;
         } catch (uploadError) {
@@ -811,7 +811,7 @@ export async function registerRoutes(
         }
       }
 
-      emitIssueScoped("issue:new", { id: issue.id }, issue.ward); // Scoped emit
+      emitIssueScoped(io, "issue:new", { id: issue.id }, issue.ward); // Scoped emit
       console.log("[UPLOAD:NO_IMAGE] No image provided, issue created without image", { issueId: issue.id });
       res.status(201).json(issue);
     } catch (err) {
@@ -854,7 +854,7 @@ export async function registerRoutes(
         details: `Updated issue status to ${status}`,
       });
 
-      emitIssueScoped("issue:update", { id: updatedIssue.id }, issue.ward); // Scoped emit
+      emitIssueScoped(io, "issue:update", { id: updatedIssue.id }, issue.ward); // Scoped emit
       res.json(updatedIssue);
     } catch (err) {
       res.status(500).json({ message: "Update failed" });
@@ -913,7 +913,7 @@ export async function registerRoutes(
       const updated = await storage.updateIssue(issueId, updates);
       if (!updated) return res.status(404).json({ message: "Issue not found" });
 
-      emitIssueScoped("issue:update", { id: updated?.id }, updated?.ward); // Scoped emit
+      emitIssueScoped(io, "issue:update", { id: updated?.id }, updated?.ward); // Scoped emit
       res.json(updated);
 
       // Cleanup old Cloudinary image after response sent (prevents orphaned resources)
@@ -972,7 +972,7 @@ export async function registerRoutes(
         });
       }
 
-      emitIssueScoped("issue:delete", { id: issueId }, issue.ward);
+      emitIssueScoped(io, "issue:delete", { id: issueId }, issue.ward);
       res.status(204).end();
 
       // Cleanup Cloudinary folder after response sent (prevents orphaned resources)
@@ -1001,7 +1001,7 @@ export async function registerRoutes(
       const issueId = Number(req.params.id);
       const issue = await storage.getIssue(issueId);
       const result = await storage.toggleVote(issueId, (req.user as any).id);
-      emitIssueScoped("issue:vote", { id: issueId, votes: result.votes }, issue?.ward);
+      emitIssueScoped(io, "issue:vote", { id: issueId, votes: result.votes }, issue?.ward);
       res.json(result);
     } catch (err) {
       res.status(500).json({ message: "Vote failed" });
