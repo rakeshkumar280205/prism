@@ -37,7 +37,13 @@ export default function AnalyticsPage() {
     }
   }, [isLoading, user, admin, setLocation]);
 
-  if (isLoading || (!user && !admin)) return null;
+  if (isLoading) {
+    return <div className="p-8 text-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user && !admin) {
+    return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
+  }
 
   // Fetch analytics on mount
   useEffect(() => {

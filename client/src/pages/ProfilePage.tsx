@@ -25,7 +25,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+    if (!user) {
       setLocation("/");
       return;
     }
@@ -78,7 +79,13 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || !user) return null;
+  if (isLoading) {
+    return <div className="p-8 text-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
+  }
 
   return (
     <div className={`max-w-2xl mx-auto py-8 ${language === 'kn' ? 'font-kannada' : ''}`}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useAdmins } from "@/hooks/use-admin";
@@ -24,9 +24,9 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function SuperAdminDashboard() {
-  const { admin } = useAuth();
+  const { admin, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { admins, isLoading, createAdmin, updateAdmin, deleteAdmin } = useAdmins();
+  const { admins, isLoading: adminsLoading, createAdmin, updateAdmin, deleteAdmin } = useAdmins();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -41,10 +41,19 @@ export default function SuperAdminDashboard() {
     role: "ADMIN",
   });
 
-  // Redirect if not Super Admin
-  if (admin && admin.role !== "SUPER_ADMIN") {
-    setLocation("/admin/dashboard");
-    return null;
+  // Redirect only after auth resolves
+  useEffect(() => {
+    if (!authLoading && admin && admin.role !== "SUPER_ADMIN") {
+      setLocation("/admin/dashboard");
+    }
+  }, [authLoading, admin, setLocation]);
+
+  if (authLoading) {
+    return <div className="p-8 text-center text-slate-600">Loading...</div>;
+  }
+
+  if (!admin || admin.role !== "SUPER_ADMIN") {
+    return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
   }
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
@@ -77,7 +86,7 @@ export default function SuperAdminDashboard() {
       if (formData.password) {
         updateData.password = formData.password;
       }
-      
+
       await updateAdmin.mutateAsync({ id: editingAdmin.id, data: updateData });
       toast({
         title: "Admin Updated",
@@ -327,7 +336,7 @@ export default function SuperAdminDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {adminsLoading ? (
             <div className="text-center py-8">
               <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
               <p className="text-slate-500 mt-2">Loading admins...</p>

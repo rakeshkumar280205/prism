@@ -8,7 +8,7 @@ import { useIssues } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Edit2, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EditIssueDialog } from "@/components/EditIssueDialog";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -43,7 +43,13 @@ export default function MyIssuesPage() {
     }
   }, [isLoading, user, setLocation]);
 
-  if (isLoading || !user) return null;
+  if (isLoading) {
+    return <div className="p-8 text-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
+  }
 
   const { data: issues, isLoading: issuesLoading, isError: issuesError, error: issuesErrorObj, refetch } = useIssues(
     statusFilter !== "all"
