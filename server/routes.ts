@@ -142,22 +142,6 @@ export async function registerRoutes(
     next();
   });
 
-  // Attach session auth to sockets once session middleware is available
-  io.use((socket, next) => {
-    if (!sessionMiddleware) return next(new Error("Session not initialized"));
-    sessionMiddleware(socket.request as any, {} as any, () => {
-      const req = socket.request as any;
-      const passportUser = req.session?.passport?.user;
-      if (!passportUser) {
-        const err: any = new Error("Unauthorized");
-        err.data = { message: "Unauthorized socket" };
-        return next(err);
-      }
-      req.authUser = passportUser;
-      return next();
-    });
-  });
-
   io.on("connection", (socket) => {
     const req = socket.request as any;
     const authUser = req?.authUser;
@@ -280,6 +264,21 @@ export async function registerRoutes(
   });
 
   app.use(sessionMiddleware);
+
+  // Attach session auth to sockets AFTER session middleware is initialized (eliminates TDZ)
+  io.use((socket, next) => {
+    sessionMiddleware(socket.request as any, {} as any, () => {
+      const req = socket.request as any;
+      const passportUser = req.session?.passport?.user;
+      if (!passportUser) {
+        const err: any = new Error("Unauthorized");
+        err.data = { message: "Unauthorized socket" };
+        return next(err);
+      }
+      req.authUser = passportUser;
+      return next();
+    });
+  });
 
   app.use(passport.initialize());
   app.use(passport.session());
