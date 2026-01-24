@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { type AuditLog } from "@/schemas";
 import {
   Table,
@@ -13,9 +16,39 @@ import { ClipboardList, User, Activity, Target, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AuditLogs() {
-  const { data: logs, isLoading } = useQuery<AuditLog[]>({
+  const { admin, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+
+  // Fetch logs only after auth is confirmed and user is super-admin
+  const { data: logs, isLoading: logsLoading } = useQuery<AuditLog[]>({
     queryKey: ["/api/audit-logs"],
+    enabled: !isLoading && !!admin && admin.role === "SUPER_ADMIN",
   });
+
+  // Redirect if not super-admin after auth loading completes
+  useEffect(() => {
+    if (!isLoading && (!admin || admin.role !== "SUPER_ADMIN")) {
+      setLocation("/");
+    }
+  }, [isLoading, admin, setLocation]);
+
+  // Show loading state during auth rehydration
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Prevent render if unauthorized (useEffect handles redirect)
+  if (!admin || admin.role !== "SUPER_ADMIN") {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Redirecting...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -43,7 +76,7 @@ export default function AuditLogs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {logsLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10">Loading logs...</TableCell>
                 </TableRow>

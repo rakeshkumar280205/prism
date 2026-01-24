@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useCreateIssue } from "@/hooks/use-issues";
 import { useLocation, Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,10 +17,36 @@ import { useI18n } from "@/lib/i18n";
 
 export default function ReportIssue() {
   const { language, t } = useI18n();
+  const { user, isLoading } = useAuth();
   const createIssue = useCreateIssue();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Redirect if not logged in after auth loading completes
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/");
+    }
+  }, [isLoading, user, setLocation]);
+
+  // Show loading state during auth rehydration
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Prevent render if unauthorized (useEffect handles redirect)
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Redirecting...</div>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState({
     title: "",

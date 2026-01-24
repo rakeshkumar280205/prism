@@ -28,8 +28,6 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const socket = useSocket(); // Keep socket connection alive for real-time issue updates
-
   // Check authentication after auth finishes loading
   useEffect(() => {
     if (!isLoading && !user && !admin) {
@@ -45,13 +43,20 @@ export default function AnalyticsPage() {
     return <div className="p-8 text-center text-slate-600">Redirecting...</div>;
   }
 
-  // Fetch analytics on mount
+  // Gate socket connection: only enable when authenticated
+  const socket = useSocket({ enabled: !isLoading && (!!user || !!admin) });
+
+  // Fetch analytics only after auth is confirmed
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    if (!isLoading && (user || admin)) {
+      fetchAnalytics();
+    }
+  }, [isLoading, user, admin]);
 
   // Refresh analytics whenever issue events occur (create/update/delete/vote)
   useEffect(() => {
+    if (!socket || !socket.connected) return;
+
     const events = ["issue:new", "issue:update", "issue:delete", "issue:vote"] as const;
     const handler = () => fetchAnalytics();
 

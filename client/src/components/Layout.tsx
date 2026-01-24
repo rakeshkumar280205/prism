@@ -1,15 +1,15 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { 
-  LogOut, 
-  Menu, 
-  X, 
-  Home, 
-  PlusCircle, 
-  User, 
-  ShieldCheck, 
-  MapPin, 
+import {
+  LogOut,
+  Menu,
+  X,
+  Home,
+  PlusCircle,
+  User,
+  ShieldCheck,
+  MapPin,
   AlertTriangle,
   ClipboardList,
   BarChart3,
@@ -22,19 +22,19 @@ import { useI18n } from "@/lib/i18n";
 import prismLogo from "@assets/image_1767338273702.jpeg";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, admin, logout } = useAuth();
+  const { user, admin, logout, isLoading } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useI18n();
 
-  // Define navigation based on role
-  const navItems = user ? [
+  // Define navigation based on role (only after auth loading completes)
+  const navItems = !isLoading && user ? [
     { label: t("nav.home"), href: "/home", icon: Home },
     { label: t("nav.report"), href: "/report", icon: PlusCircle },
     { label: t("nav.my_issues"), href: "/my-issues", icon: ClipboardList },
     { label: t("nav.analytics"), href: "/analytics", icon: BarChart3 },
     { label: t("nav.profile"), href: "/profile", icon: User },
-  ] : admin ? [
+  ] : !isLoading && admin ? [
     { label: t("nav.dashboard"), href: "/admin/dashboard", icon: ShieldCheck },
     { label: t("nav.analytics"), href: "/analytics", icon: BarChart3 },
     ...(admin.role === 'SUPER_ADMIN' ? [
@@ -52,9 +52,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const LanguageToggle = () => (
-    <Button 
-      variant="outline" 
-      size="sm" 
+    <Button
+      variant="outline"
+      size="sm"
       onClick={toggleLanguage}
       className="flex items-center gap-2 border-slate-200 hover:border-primary hover:text-primary transition-all px-3 h-9"
       data-testid="button-language-toggle"
@@ -82,8 +82,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="hidden md:flex items-center gap-4 lg:gap-6 overflow-x-auto no-scrollbar">
             <nav className="flex items-center gap-4 lg:gap-6">
               {navItems.map((item) => (
-                <Link 
-                  key={item.href} 
+                <Link
+                  key={item.href}
                   href={item.href}
                   className={`flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary
                     ${location === item.href ? "text-primary" : "text-muted-foreground"}`}
@@ -96,14 +96,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="h-6 w-px bg-slate-200 mx-2" />
             <div className="flex items-center gap-4">
               <LanguageToggle />
-              {(user || admin) && (
+              {!isLoading && (user || admin) && (
                 <>
                   <span className="text-sm text-slate-600 font-medium hidden lg:block">
                     {t("nav.hi")}, {user?.name || admin?.name}
                   </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={handleLogout}
                     className="text-slate-500 hover:text-red-600 hover:bg-red-50"
                   >
@@ -134,12 +134,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       </div>
                       <LanguageToggle />
                     </div>
-                    
+
                     <div className="flex flex-col gap-1">
                       {navItems.map((item) => (
-                        <Link 
-                          key={item.href} 
-                          href={item.href} 
+                        <Link
+                          key={item.href}
+                          href={item.href}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
                             ${location === item.href ? "bg-primary/10 text-primary" : "hover:bg-slate-100 text-slate-600"}`}
@@ -160,9 +160,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           <p className="text-xs text-muted-foreground">{user ? "Resident" : "Administrator"}</p>
                         </div>
                       </div>
-                      <Button 
-                        variant="destructive" 
-                        className="w-full justify-start" 
+                      <Button
+                        variant="destructive"
+                        className="w-full justify-start"
                         onClick={handleLogout}
                       >
                         <LogOut className="h-4 w-4 mr-2" />

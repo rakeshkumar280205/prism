@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useIssues, useUpdateIssueStatus, useDeleteIssue } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,15 +11,46 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, BarChart3, PieChart, Users, CheckCircle2 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { admin } = useAuth();
+  const { admin, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const updateStatus = useUpdateIssueStatus();
   const deleteIssue = useDeleteIssue();
   const { toast } = useToast();
-  useSocket(); // Real-time updates
 
-  const { data: issues, isLoading, isError, error } = useIssues(statusFilter !== "all" ? { status: statusFilter } : undefined);
+  // Call socket hook unconditionally; only connect when auth is confirmed
+  useSocket({ enabled: !isLoading && !!admin });
+
+  // Redirect only after auth finishes loading
+  useEffect(() => {
+    if (!isLoading && !admin) {
+      setLocation("/");
+    }
+  }, [isLoading, admin, setLocation]);
+
+  // Show loading state during auth rehydration
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show redirect placeholder while navigation happens (brief)
+  if (!admin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Redirecting...</div>
+      </div>
+    );
+  }
+
+  // Prevent issues fetch until auth is loaded
+  const { data: issues, isLoading: issuesLoading, isError, error } = useIssues(
+    statusFilter !== "all" ? { status: statusFilter } : undefined
+  );
 
   const handleStatusChange = async (id: number, status: string) => {
     const issue = issues?.find(i => i.id === id);
@@ -134,7 +166,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isError ? (
           <p className="col-span-full text-center py-10 text-destructive">{error?.message || "Failed to load issues."}</p>
-        ) : isLoading ? (
+        ) : issuesLoading ? (
           <p>Loading issues...</p>
         ) : filteredIssues?.length === 0 ? (
           <p className="col-span-full text-center py-10 text-slate-500">No issues found.</p>

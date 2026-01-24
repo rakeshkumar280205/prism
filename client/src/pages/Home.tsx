@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useIssues } from "@/hooks/use-issues";
 import { useSocket } from "@/hooks/use-socket";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { IssueCard } from "@/components/IssueCard";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +14,8 @@ import { useI18n } from "@/lib/i18n";
 
 export default function Home() {
   const { language, t } = useI18n();
+  const { user, admin, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [filters, setFilters] = useState({
     ward: "all",
     category: "all",
@@ -19,7 +23,33 @@ export default function Home() {
   });
   const [search, setSearch] = useState("");
 
-  useSocket(); // Listen for real-time updates
+  // Redirect if not authenticated after auth loading completes
+  useEffect(() => {
+    if (!isLoading && !user && !admin) {
+      setLocation("/");
+    }
+  }, [isLoading, user, admin, setLocation]);
+
+  // Show loading state during auth rehydration
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Loading...</div>
+      </div>
+    );
+  }
+
+  // Prevent render if unauthorized (useEffect handles redirect)
+  if (!user && !admin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center text-slate-600">Redirecting...</div>
+      </div>
+    );
+  }
+
+  // Listen for real-time updates (enabled only when authenticated)
+  useSocket({ enabled: !isLoading && (!!user || !!admin) });
 
   const queryFilters = {
     ...(filters.ward !== "all" && { ward: filters.ward }),
@@ -27,7 +57,7 @@ export default function Home() {
     ...(filters.status !== "all" && { status: filters.status }),
   };
 
-  const { data: issues, isLoading, isError, error, refetch } = useIssues(queryFilters);
+  const { data: issues, isLoading: issuesLoading, isError, error, refetch } = useIssues(queryFilters);
 
   const filteredIssues = issues?.filter(issue =>
     issue.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -148,7 +178,7 @@ export default function Home() {
           <div className="bg-red-50 p-6 rounded-full mb-4">
             <Filter className="h-10 w-10 text-red-400" />
           </div>
-          <h3 className={`font-semibold text-slate-900 ${language === 'kn' ? 'text-lg' : 'text-xl'}`}>{t("common.error") || "Failed to load issues"}</h3>
+          <h3 className={`font-semibold text-slate-900 ${language === 'kn' ? 'text-lg' : 'text-xl'}`}>Failed to load issues</h3>
           <p className={`text-slate-500 max-w-sm mt-2 ${language === 'kn' ? 'text-xs' : 'text-sm'}`}>
             {error?.message || t("home.no_issues_desc")}
           </p>
@@ -156,7 +186,7 @@ export default function Home() {
             {t("home.clear_filters")}
           </Button>
         </div>
-      ) : isLoading ? (
+      ) : issuesLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex flex-col space-y-3">
