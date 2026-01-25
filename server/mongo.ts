@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state. All state is function-scoped. TDZ-proof.
 import mongoose from "mongoose";
 
 export async function connectMongo() {

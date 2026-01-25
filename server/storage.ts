@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state captured by closures. All state is class- or function-scoped. TDZ-proof.
 import { type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount, type AuditLog, type InsertAuditLog } from "@shared/schema";
 import { User as UserModel } from "./models/User";
 import { Admin as AdminModel } from "./models/Admin";

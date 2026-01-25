@@ -81,7 +81,7 @@ export async function registerRoutes(
     ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean)
     : true;
 
-  let sessionMiddleware: ReturnType<typeof session> | null = null;
+
 
   if (process.env.NODE_ENV === "production" && Array.isArray(socketAllowedOrigins) && socketAllowedOrigins.length === 0) {
     console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for Socket.IO CORS.");
@@ -254,7 +254,7 @@ export async function registerRoutes(
     healthState.lastSessionError = new Error("Session store disconnected");
   });
 
-  sessionMiddleware = session({
+  const sessionMiddleware = session({
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,

@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state. All state is function-scoped. TDZ-proof.
 import multer from "multer";
 
 // Memory-based file upload middleware for image ingestion

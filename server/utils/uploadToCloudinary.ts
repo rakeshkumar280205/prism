@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state. All state is function-scoped. TDZ-proof.
 import { getCloudinary } from "./cloudinary";
 import streamifier from "streamifier";
 import sharp from "sharp";

@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state. All state is function-scoped. TDZ-proof.
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
@@ -54,12 +55,21 @@ async function buildAll() {
     "zlib",
     "net",
     "tls",
+    "express",
+    "cors",
+    "socket.io",
+    "express-session",
+    "connect-mongo",
+    "mongoose",
+    "multer",
+    "cloudinary",
+    "compression",
   ];
 
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
-    target: "node18",
+    target: "node22",
     bundle: true,
     format: "esm",
     outfile: "dist/index.js",

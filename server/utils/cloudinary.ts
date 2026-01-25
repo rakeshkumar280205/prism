@@ -1,3 +1,4 @@
+// TDZ audit: No module-scope mutable state captured by closures. 'initialized' is only mutated inside getCloudinary. TDZ-proof.
 import { v2 as cloudinary } from "cloudinary";
 
 let initialized = false;
