@@ -330,7 +330,18 @@ async function bootstrap() {
 }
 
 // Only imports, types, and function definitions above this line
-bootstrap();
+
+// Only imports, types, and function definitions above this line
+function main() {
+  return bootstrap();
+}
+
+setImmediate(() => {
+  main().catch(err => {
+    console.error("FATAL STARTUP ERROR", err);
+    process.exit(1);
+  });
+});
 
 declare module "http" {
   interface IncomingMessage {
