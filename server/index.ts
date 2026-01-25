@@ -5,7 +5,7 @@ import { registerRoutes } from "./routes";
 import { createServer, type Server } from "http";
 import { connectMongo } from "./mongo";
 import mongoose from "mongoose";
-import { storage } from "./storage";
+import { getStorage } from "./storage";
 
 // Validate required environment variables EARLY (fail-fast)
 function validateProductionEnvironment() {
@@ -49,6 +49,7 @@ async function bootstrap() {
   let io: any; // Socket.IO server instance
   let sessionStore: any; // Session store instance for cleanup
   let autoDeleteIntervalId: NodeJS.Timeout | null = null; // Store interval ID for cleanup
+  const storage = getStorage();
 
   // CORS: allow only known origins, support credentials, and handle preflight
   const isProduction = process.env.NODE_ENV === "production";
