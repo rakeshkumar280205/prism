@@ -111,7 +111,6 @@ export async function registerRoutes(
   // Generous per-IP connection throttle to prevent flood abuse (no protocol change)
   const SOCKET_CONNECT_WINDOW_MS = 60_000; // 60 seconds
   const SOCKET_CONNECT_MAX_PER_IP = 60; // generous cap per minute
-  const __socketConnectHistory = new Map<string, number[]>();
 
   function getSocketClientIp(socket: any): string {
     const xfwd = socket.handshake?.headers?.["x-forwarded-for"];
@@ -121,26 +120,31 @@ export async function registerRoutes(
     return socket.handshake?.address || "unknown";
   }
 
-  io.use((socket, next) => {
-    const ip = getSocketClientIp(socket);
-    const now = Date.now();
-    const history = __socketConnectHistory.get(ip) || [];
-    const recent = history.filter((ts) => now - ts <= SOCKET_CONNECT_WINDOW_MS);
-    recent.push(now);
-    if (recent.length === 0) {
-      // Cleanup empty entries to prevent unbounded map growth
-      __socketConnectHistory.delete(ip);
-    } else {
-      __socketConnectHistory.set(ip, recent);
-    }
+  // Move __socketConnectHistory into middleware closure to eliminate TDZ hazard
+  // (module-scope Map captured by closure causes "Cannot access 'X' before initialization" after esbuild minification)
+  io.use((() => {
+    const __socketConnectHistory = new Map<string, number[]>();
+    return (socket, next) => {
+      const ip = getSocketClientIp(socket);
+      const now = Date.now();
+      const history = __socketConnectHistory.get(ip) || [];
+      const recent = history.filter((ts) => now - ts <= SOCKET_CONNECT_WINDOW_MS);
+      recent.push(now);
+      if (recent.length === 0) {
+        // Cleanup empty entries to prevent unbounded map growth
+        __socketConnectHistory.delete(ip);
+      } else {
+        __socketConnectHistory.set(ip, recent);
+      }
 
-    if (recent.length > SOCKET_CONNECT_MAX_PER_IP) {
-      // Log reason only (avoid PII like IP addresses)
-      console.warn(`[SOCKET] connection throttled — ${recent.length}/${SOCKET_CONNECT_MAX_PER_IP} in ${SOCKET_CONNECT_WINDOW_MS / 1000}s`);
-      return next(new Error("Too many connections"));
-    }
-    next();
-  });
+      if (recent.length > SOCKET_CONNECT_MAX_PER_IP) {
+        // Log reason only (avoid PII like IP addresses)
+        console.warn(`[SOCKET] connection throttled — ${recent.length}/${SOCKET_CONNECT_MAX_PER_IP} in ${SOCKET_CONNECT_WINDOW_MS / 1000}s`);
+        return next(new Error("Too many connections"));
+      }
+      next();
+    };
+  })());
 
   io.on("connection", (socket) => {
     const req = socket.request as any;

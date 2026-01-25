@@ -161,17 +161,19 @@ export function log(message: string, source = "express") {
 }
 
 // Lightweight server-generated request ID for log correlation (no headers, no client impact)
-let __reqCounter = 0;
-function __genReqId() {
-  __reqCounter = (__reqCounter + 1) % 1000000;
-  return `${Date.now().toString(36)}-${__reqCounter.toString(36)}`;
-}
-
-// Assign request ID early in the lifecycle
-app.use((req, _res, next) => {
-  (req as any)._rid = __genReqId();
-  next();
-});
+// Move request ID generation into middleware closure to eliminate TDZ hazard
+// (module-scope counter captured by closure causes "Cannot access 'X' before initialization" after esbuild minification)
+app.use((() => {
+  let __reqCounter = 0;
+  function __genReqId() {
+    __reqCounter = (__reqCounter + 1) % 1000000;
+    return `${Date.now().toString(36)}-${__reqCounter.toString(36)}`;
+  }
+  return (req, _res, next) => {
+    (req as any)._rid = __genReqId();
+    next();
+  };
+})());
 
 app.use((req, res, next) => {
   const start = Date.now();
