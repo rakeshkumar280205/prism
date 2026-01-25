@@ -17,6 +17,16 @@ import { uploadToCloudinary } from "./utils/uploadToCloudinary";
 import { getCloudinary } from "./utils/cloudinary";
 import crypto from "crypto";
 
+// Global fallback rate limiter for /api (non-GET) to mitigate floods
+const globalApiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
+  message: { message: "Too many requests, please slow down" },
+});
+
 // Helper: Extract Cloudinary publicId from URL
 function extractCloudinaryPublicId(url: string): string | null {
   try {
@@ -291,15 +301,6 @@ export async function registerRoutes(
 
 
 
-  // Global fallback rate limiter for /api (non-GET) to mitigate floods
-  const globalApiLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 150,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
-    message: { message: "Too many requests, please slow down" },
-  });
 
   // Apply global API limiter to all /api routes (skips safe methods)
   app.use("/api", globalApiLimiter);
@@ -423,15 +424,6 @@ export async function registerRoutes(
     legacyHeaders: false,
   });
 
-  // Global fallback rate limiter for /api (non-GET) to mitigate floods
-  const globalApiLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 150,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS",
-    message: { message: "Too many requests, please slow down" },
-  });
 
   // Per-route rate limiters (generous, additive)
   const registerLimiter = rateLimit({
