@@ -1035,14 +1035,11 @@ export async function registerRoutes(
   });
 
   // Seed Super Admin if not exists (DEVELOPMENT ONLY)
-  let superAdminSeeded = false; // Flag to prevent repeated queries
   const seedSuperAdmin = async () => {
     // SECURITY: Never seed default credentials in production
-    if (process.env.NODE_ENV === "production" || superAdminSeeded) {
+    if (process.env.NODE_ENV === "production") {
       return;
     }
-
-    superAdminSeeded = true; // Mark as processed to prevent repeated queries
 
     try {
       const superAdmin = await storage.getAdminByAdminId("superadmin");
@@ -1067,7 +1064,6 @@ export async function registerRoutes(
       console.log("Super Admin account created (adminId: superadmin)");
     } catch (err) {
       console.error("Failed to seed Super Admin:", err);
-      superAdminSeeded = false; // Reset on error to allow retry on next startup
     }
   };
 
