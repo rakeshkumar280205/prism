@@ -27,7 +27,17 @@ export default function AuthPage() {
   const [cookieError, setCookieError] = useState<string | null>(null);
   useEffect(() => {
     if (!isLoading && (user || admin)) {
-      setLocation("/home");
+      // Role-based redirect after /api/me resolves
+      if (user && user.role === "user") {
+        setLocation("/home");
+      } else if (admin && admin.role === "admin") {
+        setLocation("/admin/dashboard");
+      } else if (admin && admin.role === "super-admin") {
+        setLocation("/super-admin/dashboard");
+      } else {
+        // Unknown role, fallback to home
+        setLocation("/home");
+      }
     } else if (
       !isLoading &&
       (loginUser.isSuccess || loginAdmin.isSuccess) &&

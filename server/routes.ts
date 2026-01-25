@@ -560,6 +560,12 @@ export async function registerRoutes(app: Express, httpServer: Server) {
   });
 
   app.get(api.auth.me.path, (req, res) => {
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
     if (req.isAuthenticated()) {
       const user = req.user as any;
       if (user.type === "user") return res.json({ user });

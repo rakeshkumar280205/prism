@@ -42,7 +42,13 @@ export function useSocket({ enabled = true } = {}) {
     }
 
     const invalidateIssues = () => {
-      queryClient.invalidateQueries({ queryKey: [api.issues.list.path] });
+      // Invalidate all queries whose key starts with api.issues.list.path (including filtered)
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === api.issues.list.path;
+        }
+      });
     };
 
     const events = ["issue:new", "issue:update", "issue:delete", "issue:vote"] as const;
