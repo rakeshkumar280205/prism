@@ -29,21 +29,20 @@ function validateProductionEnvironment() {
   }
 }
 
-// Run validation before anything else
-validateProductionEnvironment();
-
 // Global unhandled rejection handler to prevent crashes
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("CRITICAL: Unhandled Promise Rejection detected");
-  console.error("Reason:", reason);
-  console.error("Promise:", promise);
-  // Log but don't exit immediately - allow graceful shutdown handlers to work
-});
+function setupGlobalUnhandledRejectionHandler() {
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("CRITICAL: Unhandled Promise Rejection detected");
+    console.error("Reason:", reason);
+    console.error("Promise:", promise);
+    // Log but don't exit immediately - allow graceful shutdown handlers to work
+  });
+}
 
+async function bootstrap() {
+  validateProductionEnvironment();
+  setupGlobalUnhandledRejectionHandler();
 
-
-// All runtime logic, including app creation and middleware, is now inside the async closure
-(async () => {
   const app = express();
   const httpServer = createServer(app);
   let server: Server;
@@ -79,6 +78,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
   app.use(cors(corsOptions));
   // Enable automatic handling of preflight requests
+
   app.options("*", cors(corsOptions));
 
   // Security headers (conservative, production-safe)
@@ -320,13 +320,10 @@ process.on("unhandledRejection", (reason, promise) => {
         process.exit(0);
       });
   });
-})().catch((err) => {
-  console.error("FATAL: Startup failed:", err.message);
-  if (process.env.NODE_ENV !== "production") {
-    console.error("Stack trace:", err.stack);
-  }
-  process.exit(1);
-});
+}
+
+// Only imports, types, and function definitions above this line
+bootstrap();
 
 declare module "http" {
   interface IncomingMessage {
