@@ -78,6 +78,7 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
+    sourcemap: false,
     logLevel: "info",
   });
 }

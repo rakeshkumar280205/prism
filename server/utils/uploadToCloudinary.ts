@@ -56,8 +56,9 @@ export async function uploadToCloudinary(
     }
 
     // Upload with 30-second timeout - pass uploadStream holder to timeout so it can abort
-    let uploadStream: any = null;
-    const uploadPromise = createUploadPromise(buffer, options, (stream) => { uploadStream = stream; });
+    let uploadStream: any; // Declare above closures to avoid TDZ under minification
+    const setUploadStream = (stream: any) => { uploadStream = stream; };
+    const uploadPromise = createUploadPromise(buffer, options, setUploadStream);
     const timeoutPromise = createTimeoutPromise(() => uploadStream);
 
     console.log("[UPLOAD:PROMISE_RACE] Starting race between upload and timeout");
