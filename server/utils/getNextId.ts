@@ -1,4 +1,4 @@
-import { Counter } from "../models/Counter";
+import { getCounterModel } from "../models/Counter";
 
 /**
  * Get the next sequential ID for an entity (thread-safe, atomic at MongoDB level)
@@ -15,6 +15,7 @@ export async function getNextId(entity: string): Promise<number> {
         // findOneAndUpdate with $inc is atomic at MongoDB level
         // MongoDB acquires a write lock on the document, so concurrent requests are serialized
         // This ensures no two requests can increment the counter simultaneously
+        const Counter = getCounterModel();
         const counter = await Counter.findOneAndUpdate(
             { _id: entity },
             { $inc: { seq: 1 } },

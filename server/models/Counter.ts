@@ -1,20 +1,24 @@
-import mongoose, { Schema, Document } from "mongoose";
+
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface CounterDocument extends Document {
     _id: string;
     seq: number;
 }
 
-const counterSchema = new Schema<CounterDocument>(
-    {
-        _id: { type: String, required: true },
-        seq: { type: Number, required: true, default: 0 },
-    },
-    { timestamps: false, strict: true }
-);
+let counterModel: Model<CounterDocument> | undefined;
 
-// Ensure _id is the primary key and unique (MongoDB does this by default, but explicit for clarity)
-// MongoDB serializes updates to the same document, preventing concurrent increments
-counterSchema.index({ _id: 1 }, { unique: true, sparse: false });
-
-export const Counter = mongoose.model<CounterDocument>("Counter", counterSchema);
+export function getCounterModel(): Model<CounterDocument> {
+    if (!counterModel) {
+        const counterSchema = new Schema<CounterDocument>(
+            {
+                _id: { type: String, required: true },
+                seq: { type: Number, required: true, default: 0 },
+            },
+            { timestamps: false, strict: true }
+        );
+        counterSchema.index({ _id: 1 }, { unique: true, sparse: false });
+        counterModel = mongoose.model<CounterDocument>("Counter", counterSchema);
+    }
+    return counterModel;
+}

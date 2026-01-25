@@ -1,10 +1,10 @@
 // TDZ audit: No module-scope mutable state captured by closures. All state is class- or function-scoped. TDZ-proof.
 import { type User, type InsertUser, type Admin, type InsertAdmin, type Issue, type InsertIssue, type Vote, type IssueWithVoteCount, type AuditLog, type InsertAuditLog } from "@shared/schema";
-import { User as UserModel } from "./models/User";
-import { Admin as AdminModel } from "./models/Admin";
-import { Issue as IssueModel } from "./models/Issue";
-import { Vote as VoteModel } from "./models/Vote";
-import { AuditLog as AuditLogModel } from "./models/AuditLog";
+import { getUserModel } from "./models/User";
+import { getAdminModel } from "./models/Admin";
+import { getIssueModel } from "./models/Issue";
+import { getVoteModel } from "./models/Vote";
+import { getAuditLogModel } from "./models/AuditLog";
 
 /**
  * Strips MongoDB internal fields (_id, __v) and sensitive fields (password)
@@ -54,32 +54,45 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private UserModel;
+  private AdminModel;
+  private IssueModel;
+  private VoteModel;
+  private AuditLogModel;
+
+  constructor() {
+    this.UserModel = getUserModel();
+    this.AdminModel = getAdminModel();
+    this.IssueModel = getIssueModel();
+    this.VoteModel = getVoteModel();
+    this.AuditLogModel = getAuditLogModel();
+  }
   // Users
   async getUser(id: number): Promise<User | undefined> {
-    const user = await UserModel.findOne({ id }).lean();
+    const user = await this.UserModel.findOne({ id }).lean();
     if (!user || user.id == null) return undefined;
     return cleanObject(user) as User;
   }
 
   async getUserByMobile(mobile: string): Promise<User | undefined> {
-    const user = await UserModel.findOne({ mobile }).lean();
+    const user = await this.UserModel.findOne({ mobile }).lean();
     if (!user || user.id == null) return undefined;
     return cleanObject(user) as User;
   }
 
   async getUserByMobileForAuth(mobile: string): Promise<(User & { password: string }) | undefined> {
-    const user = await UserModel.findOne({ mobile }).lean();
+    const user = await this.UserModel.findOne({ mobile }).lean();
     if (!user || user.id == null) return undefined;
     return user as (User & { password: string });
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const user = await UserModel.create(insertUser);
+    const user = await this.UserModel.create(insertUser);
     return cleanObject(user.toObject() as User) as User;
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
-    const user = await UserModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+    const user = await this.UserModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
     if (!user) {
       throw new Error(`User with id ${id} not found`);
     }
@@ -88,19 +101,19 @@ export class DatabaseStorage implements IStorage {
 
   // Admins
   async getAdmin(id: number): Promise<Admin | undefined> {
-    const admin = await AdminModel.findOne({ id }).lean();
+    const admin = await this.AdminModel.findOne({ id }).lean();
     if (!admin || admin.id == null) return undefined;
     return cleanObject(admin) as Admin;
   }
 
   async getAdminByAdminId(adminId: string): Promise<Admin | undefined> {
-    const admin = await AdminModel.findOne({ adminId }).lean();
+    const admin = await this.AdminModel.findOne({ adminId }).lean();
     if (!admin || admin.id == null) return undefined;
     return cleanObject(admin) as Admin;
   }
 
   async getAdminByAdminIdForAuth(adminId: string): Promise<(Admin & { password: string }) | undefined> {
-    const admin = await AdminModel.findOne({ adminId }).lean();
+    const admin = await this.AdminModel.findOne({ adminId }).lean();
     if (!admin || admin.id == null) return undefined;
     return admin as (Admin & { password: string });
   }
@@ -117,7 +130,7 @@ export class DatabaseStorage implements IStorage {
       createdBy: insertAdmin.createdBy,
     };
 
-    const admin = await AdminModel.create(adminData);
+    const admin = await this.AdminModel.create(adminData);
     const savedAdmin = admin.toObject();
     if (savedAdmin.id == null) throw new Error("Admin created without ID");
     return cleanObject(savedAdmin) as Admin;
@@ -125,12 +138,12 @@ export class DatabaseStorage implements IStorage {
 
   async listAdmins(): Promise<Admin[]> {
     // Defensive limit to prevent memory exhaustion (1000 admins is far beyond expected scale)
-    const admins = await AdminModel.find().sort({ createdAt: -1 }).limit(1000).lean();
+    const admins = await this.AdminModel.find().sort({ createdAt: -1 }).limit(1000).lean();
     return admins.map(cleanObject) as Admin[];
   }
 
   async updateAdmin(id: number, updates: Partial<InsertAdmin>): Promise<Admin> {
-    const admin = await AdminModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
+    const admin = await this.AdminModel.findOneAndUpdate({ id }, updates, { new: true }).lean();
     if (!admin) {
       throw new Error(`Admin with id ${id} not found`);
     }
@@ -138,12 +151,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAdmin(id: number): Promise<void> {
-    await AdminModel.deleteOne({ id });
+    await this.AdminModel.deleteOne({ id });
   }
 
   // Issues
   async getIssue(id: number): Promise<Issue | undefined> {
-    const issue = await IssueModel.findOne({ id }).lean();
+    const issue = await this.IssueModel.findOne({ id }).lean();
     if (!issue || issue.id == null) return undefined;
     return cleanObject(issue) as Issue;
   }
@@ -160,7 +173,7 @@ export class DatabaseStorage implements IStorage {
     const MAX_ISSUES = 10000; // Hard limit for safety
 
     // Sort by date and apply limit
-    const allIssues = await IssueModel.find(query).sort({ createdAt: -1 }).limit(MAX_ISSUES).lean();
+    const allIssues = await this.IssueModel.find(query).sort({ createdAt: -1 }).limit(MAX_ISSUES).lean();
 
     if (allIssues.length === 0) {
       return [];
@@ -174,7 +187,7 @@ export class DatabaseStorage implements IStorage {
 
     // Batch fetch vote counts for all issues (single aggregation query)
     const issueIds = validIssues.map(issue => issue.id!);
-    const voteCounts = await VoteModel.aggregate([
+    const voteCounts = await this.VoteModel.aggregate([
       { $match: { issueId: { $in: issueIds } } },
       { $group: { _id: "$issueId", count: { $sum: 1 } } }
     ]);
@@ -183,7 +196,7 @@ export class DatabaseStorage implements IStorage {
     // Batch fetch user votes for all issues (single query if userId provided)
     let userVotesMap = new Map<number, boolean>();
     if (userId) {
-      const userVotes = await VoteModel.find({
+      const userVotes = await this.VoteModel.find({
         issueId: { $in: issueIds },
         userId
       }).lean();
@@ -201,12 +214,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createIssue(insertIssue: any): Promise<Issue> {
-    const issue = await IssueModel.create(insertIssue);
+    const issue = await this.IssueModel.create(insertIssue);
     return cleanObject(issue.toObject() as Issue) as Issue;
   }
 
   async updateIssueStatus(id: number, status: string): Promise<Issue> {
-    const issue = await IssueModel.findOneAndUpdate({ id }, { status, updatedAt: new Date() }, { new: true }).lean();
+    const issue = await this.IssueModel.findOneAndUpdate({ id }, { status, updatedAt: new Date() }, { new: true }).lean();
     if (!issue) {
       throw new Error("Issue not found");
     }
@@ -214,13 +227,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateIssue(id: number, updates: any): Promise<Issue | undefined> {
-    const issue = await IssueModel.findOneAndUpdate({ id }, { ...updates, updatedAt: new Date() }, { new: true }).lean();
+    const issue = await this.IssueModel.findOneAndUpdate({ id }, { ...updates, updatedAt: new Date() }, { new: true }).lean();
     return cleanObject(issue) as Issue | undefined;
   }
 
   async deleteIssue(id: number): Promise<void> {
-    await VoteModel.deleteMany({ issueId: id }); // Cascade delete votes
-    await IssueModel.deleteOne({ id });
+    await this.VoteModel.deleteMany({ issueId: id }); // Cascade delete votes
+    await this.IssueModel.deleteOne({ id });
   }
 
   async deleteOldResolvedIssues(): Promise<void> {
@@ -233,7 +246,7 @@ export class DatabaseStorage implements IStorage {
     // Use bulk operations to delete in batches without loading all IDs into memory
     while (true) {
       // Find one batch of old issues
-      const batch = await IssueModel.find({
+      const batch = await this.IssueModel.find({
         status: "Resolved",
         updatedAt: { $lt: thirtyDaysAgo }
       }).select('id').limit(BATCH_SIZE).lean();
@@ -247,8 +260,8 @@ export class DatabaseStorage implements IStorage {
 
       // Delete votes and issues for this batch in parallel
       await Promise.all([
-        VoteModel.deleteMany({ issueId: { $in: batchIds } }),
-        IssueModel.deleteMany({ id: { $in: batchIds } })
+        this.VoteModel.deleteMany({ issueId: { $in: batchIds } }),
+        this.IssueModel.deleteMany({ id: { $in: batchIds } })
       ]);
     }
 
@@ -260,7 +273,7 @@ export class DatabaseStorage implements IStorage {
   async findPotentialDuplicates(data: { ward: string; category: string; title: string }): Promise<IssueWithVoteCount[]> {
     // Escape regex special characters to prevent ReDoS attacks and injection
     const escapedTitle = data.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const similarIssues = await IssueModel.find({
+    const similarIssues = await this.IssueModel.find({
       ward: data.ward,
       category: data.category,
       title: { $regex: escapedTitle, $options: 'i' }
@@ -281,7 +294,7 @@ export class DatabaseStorage implements IStorage {
 
     // Batch fetch vote counts using aggregation instead of N+1 queries
     const issueIds = validIssues.map(issue => issue.id!);
-    const voteCounts = await VoteModel.aggregate([
+    const voteCounts = await this.VoteModel.aggregate([
       { $match: { issueId: { $in: issueIds } } },
       { $group: { _id: '$issueId', count: { $sum: 1 } } }
     ]);
@@ -298,17 +311,17 @@ export class DatabaseStorage implements IStorage {
 
   // Votes
   async toggleVote(issueId: number, userId: number): Promise<{ votes: number; voted: boolean }> {
-    const existingVote = await VoteModel.findOne({ issueId, userId }).lean();
+    const existingVote = await this.VoteModel.findOne({ issueId, userId }).lean();
 
     if (existingVote) {
       // Unvote
-      await VoteModel.deleteOne({ id: existingVote.id });
+      await this.VoteModel.deleteOne({ id: existingVote.id });
       const count = await this.getVoteCount(issueId);
       return { votes: count, voted: false };
     } else {
       // Vote
       try {
-        await VoteModel.create({ issueId, userId });
+        await this.VoteModel.create({ issueId, userId });
       } catch (error: any) {
         if (error && error.code === 11000) {
           const count = await this.getVoteCount(issueId);
@@ -322,24 +335,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVoteCount(issueId: number): Promise<number> {
-    const count = await VoteModel.countDocuments({ issueId });
+    const count = await this.VoteModel.countDocuments({ issueId });
     return count;
   }
 
   async hasUserVoted(issueId: number, userId: number): Promise<boolean> {
-    const vote = await VoteModel.findOne({ issueId, userId }).lean();
+    const vote = await this.VoteModel.findOne({ issueId, userId }).lean();
     return vote !== null;
   }
 
   // Audit Logs
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
-    const auditLog = await AuditLogModel.create(log);
+    const auditLog = await this.AuditLogModel.create(log);
     return cleanObject(auditLog.toObject() as AuditLog) as AuditLog;
   }
 
   async listAuditLogs(): Promise<AuditLog[]> {
     // Defensive limit to prevent memory exhaustion in production (10000 logs should cover months of activity)
-    const logs = await AuditLogModel.find().sort({ createdAt: -1 }).limit(10000).lean();
+    const logs = await this.AuditLogModel.find().sort({ createdAt: -1 }).limit(10000).lean();
     return logs.map(cleanObject) as AuditLog[];
   }
 
@@ -380,7 +393,7 @@ export class DatabaseStorage implements IStorage {
       },
     ];
 
-    const aggResult = await IssueModel.aggregate(pipeline);
+    const aggResult = await this.IssueModel.aggregate(pipeline);
     const facet = aggResult[0] || { total: [], byStatus: [], byCategory: [], byWard: [], byMonth: [] };
 
     const totalIssues = facet.total.length ? facet.total[0].count : 0;
@@ -427,4 +440,6 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+export function getStorage() {
+  return new DatabaseStorage();
+}
