@@ -40,176 +40,171 @@ process.on("unhandledRejection", (reason, promise) => {
   // Log but don't exit immediately - allow graceful shutdown handlers to work
 });
 
-const app = express();
-const httpServer = createServer(app);
-let server: Server;
-let io: any; // Socket.IO server instance
-let sessionStore: any; // Session store instance for cleanup
 
-// Schedule auto-delete job for old resolved issues
-let autoDeleteIntervalId: NodeJS.Timeout | null = null; // Store interval ID for cleanup
 
-function scheduleAutoDeleteJob() {
-  let isAutoDeleting = false; // Lock to prevent concurrent execution
-  let consecutiveFailures = 0; // Track repeated failures
-
-  autoDeleteIntervalId = setInterval(async () => {
-    // Skip if already running (prevent overlap)
-    if (isAutoDeleting) return;
-
-    isAutoDeleting = true;
-    try {
-      if ((storage as any).deleteOldResolvedIssues) {
-        await (storage as any).deleteOldResolvedIssues();
-        consecutiveFailures = 0; // Reset on success
-      }
-    } catch (err) {
-      consecutiveFailures++;
-      console.error(`[CRITICAL] Auto-delete task failed (${consecutiveFailures} consecutive failure(s)):`, err);
-
-      // Alert on repeated failures (may indicate persistent issue)
-      if (consecutiveFailures >= 3) {
-        console.error(`[ALERT] Auto-delete has failed ${consecutiveFailures} times - old data may be accumulating!`);
-      }
-    } finally {
-      isAutoDeleting = false; // Always release lock
-    }
-  }, 24 * 60 * 60 * 1000); // Every 24 hours
-
-  // Allow process to exit even if interval is active
-  if (autoDeleteIntervalId) {
-    autoDeleteIntervalId.unref();
-  }
-}
-
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
-// CORS: allow only known origins, support credentials, and handle preflight
-const isProduction = process.env.NODE_ENV === "production";
-const devOrigins = ["http://localhost:5173", "http://localhost:3000"];
-// Allow both explicit frontend URL and Render-provided external URL in production
-const allowedOrigins = isProduction
-  ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean) as string[]
-  : devOrigins;
-
-// Fail fast if production origins are not configured (prevents silent CORS denial and missing cookies)
-if (isProduction && allowedOrigins.length === 0) {
-  console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for CORS/cookies in production.");
-  process.exit(1);
-}
-
-const corsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean | string) => void) => {
-    // Allow requests without Origin (server-to-server, curl) and same-origin
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, origin);
-    // Silently reject unknown origins without throwing an error
-    // This prevents error logs in production while still rejecting CORS requests
-    callback(null, false);
-  },
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-// Enable automatic handling of preflight requests
-app.options("*", cors(corsOptions));
-
-// Security headers (conservative, production-safe)
-app.use((req, res, next) => {
-  // Prevent clickjacking
-  res.setHeader("X-Frame-Options", "DENY");
-  // Prevent MIME-type sniffing
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  // Control referrer information
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  // Enforce HTTPS in production (Render terminates TLS)
-  if (isProduction) {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000");
-  }
-  next();
-});
-
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false }));
-
-export function log(message: string, source = "express") {
-  if (process.env.NODE_ENV === "production") {
-    // Production: minimal logging without timestamps
-    console.log(`[${source.toUpperCase()}] ${message}`);
-    return;
-  }
-
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-
-// Lightweight server-generated request ID for log correlation (no headers, no client impact)
-// Move request ID generation into middleware closure to eliminate TDZ hazard
-// (module-scope counter captured by closure causes "Cannot access 'X' before initialization" after esbuild minification)
-app.use((() => {
-  let __reqCounter = 0;
-  function __genReqId() {
-    __reqCounter = (__reqCounter + 1) % 1000000;
-    return `${Date.now().toString(36)}-${__reqCounter.toString(36)}`;
-  }
-  return (req, _res, next) => {
-    (req as any)._rid = __genReqId();
-    next();
-  };
-})());
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  // Only capture responses in development (avoid overhead and sensitive data logging in production)
-  if (process.env.NODE_ENV !== "production") {
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
-  }
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      if (process.env.NODE_ENV === "production") {
-        // Production: minimal request logging without response body
-        log(`${req.method} ${path} ${res.statusCode} ${duration}ms rid=${(req as any)._rid}`, "http");
-      } else {
-        // Development: detailed logging with response
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-        log(`${logLine} rid=${(req as any)._rid}`);
-      }
-    }
-  });
-
-  next();
-});
-
+// All runtime logic, including app creation and middleware, is now inside the async closure
 (async () => {
+  const app = express();
+  const httpServer = createServer(app);
+  let server: Server;
+  let io: any; // Socket.IO server instance
+  let sessionStore: any; // Session store instance for cleanup
+  let autoDeleteIntervalId: NodeJS.Timeout | null = null; // Store interval ID for cleanup
+
+  // CORS: allow only known origins, support credentials, and handle preflight
+  const isProduction = process.env.NODE_ENV === "production";
+  const devOrigins = ["http://localhost:5173", "http://localhost:3000"];
+  // Allow both explicit frontend URL and Render-provided external URL in production
+  const allowedOrigins = isProduction
+    ? [process.env.FRONTEND_URL, process.env.RENDER_EXTERNAL_URL].filter(Boolean) as string[]
+    : devOrigins;
+
+  // Fail fast if production origins are not configured (prevents silent CORS denial and missing cookies)
+  if (isProduction && allowedOrigins.length === 0) {
+    console.error("FATAL: FRONTEND_URL or RENDER_EXTERNAL_URL must be set for CORS/cookies in production.");
+    process.exit(1);
+  }
+
+  const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean | string) => void) => {
+      // Allow requests without Origin (server-to-server, curl) and same-origin
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, origin);
+      // Silently reject unknown origins without throwing an error
+      // This prevents error logs in production while still rejecting CORS requests
+      callback(null, false);
+    },
+    credentials: true,
+  };
+
+  app.use(cors(corsOptions));
+  // Enable automatic handling of preflight requests
+  app.options("*", cors(corsOptions));
+
+  // Security headers (conservative, production-safe)
+  app.use((req, res, next) => {
+    // Prevent clickjacking
+    res.setHeader("X-Frame-Options", "DENY");
+    // Prevent MIME-type sniffing
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // Control referrer information
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Enforce HTTPS in production (Render terminates TLS)
+    if (isProduction) {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000");
+    }
+    next();
+  });
+
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+
+  app.use(express.urlencoded({ extended: false }));
+
+  // Logging utility
+  function log(message: string, source = "express") {
+    if (process.env.NODE_ENV === "production") {
+      // Production: minimal logging without timestamps
+      console.log(`[${source.toUpperCase()}] ${message}`);
+      return;
+    }
+
+    const formattedTime = new Date().toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    console.log(`${formattedTime} [${source}] ${message}`);
+  }
+
+  // Lightweight server-generated request ID for log correlation (no headers, no client impact)
+  app.use((() => {
+    let __reqCounter = 0;
+    function __genReqId() {
+      __reqCounter = (__reqCounter + 1) % 1000000;
+      return `${Date.now().toString(36)}-${__reqCounter.toString(36)}`;
+    }
+    return (req, _res, next) => {
+      (req as any)._rid = __genReqId();
+      next();
+    };
+  })());
+
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const path = req.path;
+    let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+    // Only capture responses in development (avoid overhead and sensitive data logging in production)
+    if (process.env.NODE_ENV !== "production") {
+      const originalResJson = res.json;
+      res.json = function (bodyJson, ...args) {
+        capturedJsonResponse = bodyJson;
+        return originalResJson.apply(res, [bodyJson, ...args]);
+      };
+    }
+
+    res.on("finish", () => {
+      const duration = Date.now() - start;
+      if (path.startsWith("/api")) {
+        if (process.env.NODE_ENV === "production") {
+          // Production: minimal request logging without response body
+          log(`${req.method} ${path} ${res.statusCode} ${duration}ms rid=${(req as any)._rid}`, "http");
+        } else {
+          // Development: detailed logging with response
+          let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+          if (capturedJsonResponse) {
+            logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+          }
+          log(`${logLine} rid=${(req as any)._rid}`);
+        }
+      }
+    });
+
+    next();
+  });
+
+  // Schedule auto-delete job for old resolved issues
+  function scheduleAutoDeleteJob() {
+    let isAutoDeleting = false; // Lock to prevent concurrent execution
+    let consecutiveFailures = 0; // Track repeated failures
+
+    autoDeleteIntervalId = setInterval(async () => {
+      // Skip if already running (prevent overlap)
+      if (isAutoDeleting) return;
+
+      isAutoDeleting = true;
+      try {
+        if ((storage as any).deleteOldResolvedIssues) {
+          await (storage as any).deleteOldResolvedIssues();
+          consecutiveFailures = 0; // Reset on success
+        }
+      } catch (err) {
+        consecutiveFailures++;
+        console.error(`[CRITICAL] Auto-delete task failed (${consecutiveFailures} consecutive failure(s)):`, err);
+
+        // Alert on repeated failures (may indicate persistent issue)
+        if (consecutiveFailures >= 3) {
+          console.error(`[ALERT] Auto-delete has failed ${consecutiveFailures} times - old data may be accumulating!`);
+        }
+      } finally {
+        isAutoDeleting = false; // Always release lock
+      }
+    }, 24 * 60 * 60 * 1000); // Every 24 hours
+
+    // Allow process to exit even if interval is active
+    if (autoDeleteIntervalId) {
+      autoDeleteIntervalId.unref();
+    }
+  }
+
   await connectMongo();
   const result = await registerRoutes(httpServer, app);
   server = result.httpServer;
@@ -332,3 +327,10 @@ app.use((req, res, next) => {
   }
   process.exit(1);
 });
+
+declare module "http" {
+  interface IncomingMessage {
+    rawBody: unknown;
+  }
+}
+
