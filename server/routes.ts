@@ -17,6 +17,8 @@ import { uploadToCloudinary } from "./utils/uploadToCloudinary";
 import { getCloudinary } from "./utils/cloudinary";
 import crypto from "crypto";
 
+// ...existing code...
+
 // Global fallback rate limiter for /api (non-GET) to mitigate floods
 const globalApiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -44,15 +46,17 @@ function isBcryptHash(value: string): boolean {
 }
 
 // Register all routes and socket handlers
-export async function registerRoutes(
-  httpServer,
-  app
-) {
+export async function registerRoutes(app: Express, httpServer: Server) {
+  // Minimal production-safe health check endpoint
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  });
   const storage = getStorage();
-  // Trust proxy in production for secure cookies behind reverse proxies
-  if (process.env.NODE_ENV === "production") {
-    app.set("trust proxy", 1);
-  }
+
 
   // Health monitoring state
   const healthState = {
@@ -279,6 +283,10 @@ export async function registerRoutes(
     },
   });
 
+  // Trust proxy in production for secure cookies behind reverse proxies
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
   app.use(sessionMiddleware);
 
   // Attach session auth to sockets AFTER session middleware is initialized (eliminates TDZ)

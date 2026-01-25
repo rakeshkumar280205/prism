@@ -214,7 +214,7 @@ async function bootstrap() {
     console.error(err);
     process.exit(1);
   }
-  const result = await registerRoutes(httpServer, app);
+  const result = await registerRoutes(app, httpServer);
   server = result.httpServer;
   io = result.io;
   sessionStore = result.sessionStore;

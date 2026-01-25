@@ -24,11 +24,25 @@ export default function AuthPage() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   // Redirect to /home after successful login
+  const [cookieError, setCookieError] = useState<string | null>(null);
   useEffect(() => {
     if (!isLoading && (user || admin)) {
       setLocation("/home");
+    } else if (
+      !isLoading &&
+      (loginUser.isSuccess || loginAdmin.isSuccess) &&
+      !user &&
+      !admin
+    ) {
+      setCookieError(
+        "Login succeeded, but your browser blocked session cookies.\n" +
+        "This commonly happens in Incognito or when third-party cookies are disabled.\n" +
+        "Please use a normal browser window or allow cookies for this site."
+      );
+    } else {
+      setCookieError(null);
     }
-  }, [isLoading, user, admin, setLocation]);
+  }, [isLoading, user, admin, setLocation, loginUser.isSuccess, loginAdmin.isSuccess]);
 
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +72,15 @@ export default function AuthPage() {
 
   return (
     <div className={`min-h-screen grid lg:grid-cols-2 ${language === 'kn' ? 'font-kannada' : ''}`}>
+      {cookieError && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-4">
+          <strong>Session Error:</strong>
+          <br />
+          {cookieError.split("\n").map((line, i) => (
+            <span key={i}>{line}<br /></span>
+          ))}
+        </div>
+      )}
       {/* Left Panel - Branding */}
       <div className="relative hidden lg:flex flex-col justify-between bg-primary p-10 text-primary-foreground overflow-hidden">
         <div className="z-10 flex items-center gap-3">
