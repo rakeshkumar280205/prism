@@ -55,6 +55,7 @@ export default function Home() {
     issue.description.toLowerCase().includes(search.toLowerCase())
   );
 
+
   return (
     <div className={`space-y-8 ${language === 'kn' ? 'font-kannada' : ''}`}>
       {/* Hero Section */}

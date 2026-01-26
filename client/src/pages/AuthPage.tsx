@@ -26,20 +26,26 @@ export default function AuthPage() {
   // Redirect to /home after successful login
   const [cookieError, setCookieError] = useState<string | null>(null);
   useEffect(() => {
-    if (!isLoading && (user || admin)) {
-      // Role-based redirect after /api/me resolves
-      if (user && user.role === "user") {
-        setLocation("/home");
-      } else if (admin && admin.role === "admin") {
-        setLocation("/admin/dashboard");
-      } else if (admin && admin.role === "super-admin") {
-        setLocation("/super-admin/dashboard");
-      } else {
-        // Unknown role, fallback to home
-        setLocation("/home");
-      }
-    } else if (
-      !isLoading &&
+    if (isLoading) return;
+
+    // ✅ Role-based redirect (backend sends UPPERCASE roles)
+    if (user?.role?.toUpperCase() === "USER") {
+      setLocation("/home");
+      return;
+    }
+
+    if (admin?.role?.toUpperCase() === "ADMIN") {
+      setLocation("/admin/dashboard");
+      return;
+    }
+
+    if (admin?.role?.toUpperCase() === "SUPER_ADMIN") {
+      setLocation("/admin/dashboard");
+      return;
+    }
+
+    // ⚠️ Cookie blocked case (Incognito / strict browser)
+    if (
       (loginUser.isSuccess || loginAdmin.isSuccess) &&
       !user &&
       !admin
@@ -52,7 +58,14 @@ export default function AuthPage() {
     } else {
       setCookieError(null);
     }
-  }, [isLoading, user, admin, setLocation, loginUser.isSuccess, loginAdmin.isSuccess]);
+  }, [
+    isLoading,
+    user,
+    admin,
+    setLocation,
+    loginUser.isSuccess,
+    loginAdmin.isSuccess,
+  ]);
 
   const handleUserLogin = async (e: React.FormEvent) => {
     e.preventDefault();
