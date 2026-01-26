@@ -55,7 +55,6 @@ export default function Home() {
     issue.description.toLowerCase().includes(search.toLowerCase())
   );
 
-
   return (
     <div className={`space-y-8 ${language === 'kn' ? 'font-kannada' : ''}`}>
       {/* Hero Section */}
@@ -82,7 +81,7 @@ export default function Home() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-xl border shadow-sm sticky top-16 md:top-20 z-30">
+      <div className="bg-white p-4 rounded-xl border shadow-sm md:sticky md:top-20 z-30">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
