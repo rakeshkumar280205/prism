@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useCreateIssue } from "@/hooks/use-issues";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ export default function ReportIssue() {
   const { language, t } = useI18n();
   const { user, isLoading } = useAuth();
   const createIssue = useCreateIssue();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,7 +147,23 @@ export default function ReportIssue() {
         title: t("report.success"),
         description: t("report.success_desc"),
       });
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        ward: "",
+        address: "",
+      });
+      setImage(null);
+      setPreviewUrl(null);
       setDuplicates([]);// Clear duplicates on successful submission
+
+      // Reset file input element
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      setLocation("/home");
     } catch (err: any) {
       toast({
         title: "Submission Failed",

@@ -33,7 +33,7 @@ export default function RegisterPage() {
         title: t("reg.success"),
         description: "Please login with your credentials.",
       });
-      setLocation("/login");
+      setLocation("/")
     } catch (err: any) {
       toast({
         title: t("reg.failed"),
