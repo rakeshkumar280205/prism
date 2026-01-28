@@ -16,11 +16,29 @@ import { type IssueWithVoteCount } from "@/schemas";
 import { useI18n } from "@/lib/i18n";
 
 export default function ReportIssue() {
+  // Upvote handler for duplicate issues
+  const handleUpvoteDuplicate = async (issueId: number) => {
+    try {
+      await apiRequest("POST", `/api/issues/${issueId}/vote`);
+      toast({
+        title: "Upvoted successfully",
+        description: "You supported an existing issue instead of creating a duplicate.",
+      });
+      window.location.href = "/home";
+    } catch (err) {
+      toast({
+        title: "Failed to upvote",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
   const { language, t } = useI18n();
   const { user, isLoading } = useAuth();
   const createIssue = useCreateIssue();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // Show loading state during auth rehydration
   if (isLoading) {
@@ -40,6 +58,11 @@ export default function ReportIssue() {
     );
   }
 
+
+  const [image, setImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<IssueWithVoteCount[]>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -47,32 +70,35 @@ export default function ReportIssue() {
     ward: "",
     address: "",
   });
-  const [image, setImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [duplicates, setDuplicates] = useState<IssueWithVoteCount[]>([]);
+
+  const checkDuplicates = async () => {
+    if (formData.title.length > 3 && formData.category && formData.ward) {
+      setCheckingDuplicates(true);
+      try {
+        const res = await apiRequest("POST", "/api/issues/check-duplicates", {
+          title: formData.title,
+          category: formData.category,
+          ward: formData.ward,
+        });
+        const data = await res.json();
+        setDuplicates(data.slice(0, 3));
+      } catch (err) {
+        console.error("Failed to check duplicates", err);
+      } finally {
+        setCheckingDuplicates(false);
+      }
+    } else {
+      setDuplicates([]);
+    }
+  };
 
   useEffect(() => {
-    const checkDuplicates = async () => {
-      if (formData.title.length > 3 && formData.category && formData.ward) {
-        try {
-          const res = await apiRequest("POST", "/api/issues/check-duplicates", {
-            title: formData.title,
-            category: formData.category,
-            ward: formData.ward
-          });
-          const data = await res.json();
-          setDuplicates(data);
-        } catch (err) {
-          console.error("Failed to check duplicates", err);
-        }
-      } else {
-        setDuplicates([]);
-      }
-    };
+    const timer = setTimeout(() => {
+      checkDuplicates();
+    }, 500);
 
-    const timer = setTimeout(checkDuplicates, 500);
     return () => clearTimeout(timer);
-  }, [formData.title, formData.category, formData.ward, apiRequest]);
+  }, [formData.title, formData.category, formData.ward]);
 
   // Cleanup blob URLs on component unmount
   useEffect(() => {
@@ -120,6 +146,7 @@ export default function ReportIssue() {
         title: t("report.success"),
         description: t("report.success_desc"),
       });
+      setDuplicates([]);// Clear duplicates on successful submission
     } catch (err: any) {
       toast({
         title: "Submission Failed",
@@ -148,6 +175,7 @@ export default function ReportIssue() {
                 placeholder="e.g. Large pothole on Main Street"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onBlur={checkDuplicates}
                 required
                 className="h-12"
               />
@@ -273,7 +301,12 @@ export default function ReportIssue() {
                 onChange={handleImageChange}
               />
             </div>
-
+            {checkingDuplicates && (
+              <p className="text-xs text-slate-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Checking for similar issues…
+              </p>
+            )}
             {/* Duplicate Warning */}
             {duplicates.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -293,11 +326,15 @@ export default function ReportIssue() {
                           <MapPin className="h-3 w-3" /> {issue.address}
                         </p>
                       </div>
-                      <Link href={`/home`}>
-                        <Button type="button" size="sm" variant="outline" className="h-8 border-amber-200 hover:bg-amber-50 text-amber-700">
-                          <ThumbsUp className="h-3 w-3 mr-1" /> {issue.voteCount}
-                        </Button>
-                      </Link>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-amber-200 hover:bg-amber-50 text-amber-700"
+                        onClick={() => handleUpvoteDuplicate(issue.id)}
+                      >
+                        <ThumbsUp className="h-3 w-3 mr-1" /> {issue.voteCount}
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -310,7 +347,7 @@ export default function ReportIssue() {
                   {t("report.cancel")}
                 </Button>
               </Link>
-              <Button type="submit" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} disabled={createIssue.isPending}>
+              <Button type="submit" className={`flex-1 ${language === 'kn' ? 'text-xs' : ''}`} disabled={createIssue.isPending || checkingDuplicates}>
                 {createIssue.isPending ? t("report.submitting") : t("report.submit")}
               </Button>
             </div>

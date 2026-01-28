@@ -59,7 +59,10 @@ export async function registerRoutes(app: Express, httpServer: Server) {
 
 
   // Health monitoring state
-  const healthState = {
+  const healthState: {
+    isSessionStoreHealthy: boolean;
+    lastSessionError: Error | null;
+  } = {
     isSessionStoreHealthy: true,
     lastSessionError: null,
   };
@@ -333,7 +336,7 @@ export async function registerRoutes(app: Express, httpServer: Server) {
     // Exclude selected auth routes (match by originalUrl without query, prefix-safe)
     const originalUrl = req.originalUrl as string | undefined;
     const pathname = originalUrl ? originalUrl.split("?")[0] : req.path;
-    if ([...csrfExcludedPaths].some((p) => pathname.startsWith(p))) return next();
+    if (Array.from(csrfExcludedPaths).some((p) => pathname.startsWith(p))) return next();
 
     const origin = (req.headers.origin as string | undefined) || undefined;
     let checkOrigin = origin;
@@ -430,6 +433,15 @@ export async function registerRoutes(app: Express, httpServer: Server) {
     message: { message: "Too many image uploads. Please try later." },
     standardHeaders: true,
     legacyHeaders: false,
+  });
+
+  // Rate limiter for duplicate issue checks (text-only, anti-spam)
+  const duplicateCheckLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30,            // 30 checks per minute per user/IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many duplicate checks, please slow down" },
   });
 
 
@@ -748,15 +760,38 @@ export async function registerRoutes(app: Express, httpServer: Server) {
     }
   });
 
-  app.post("/api/issues/check-duplicates", imageUploadLimiter, async (req, res) => {
+
+  app.post("/api/issues/check-duplicates", duplicateCheckLimiter, async (req, res) => {
     // Only authenticated users can check duplicates (prevents anonymous abuse)
     if (!req.isAuthenticated() || (req.user as any).type !== "user") {
       return res.status(401).json({ message: "Unauthorized" });
     }
+
     try {
       const { ward, category, title } = req.body;
-      if (!ward || !category || !title) return res.status(400).json({ message: "Missing required fields" });
-      const duplicates = await (storage as any).findPotentialDuplicates({ ward, category, title });
+
+      // Validate title
+      if (typeof title !== "string" || title.trim().length < 4) {
+        return res.status(400).json({ message: "Title must be at least 4 characters" });
+      }
+
+      // Validate category
+      if (typeof category !== "string" || category.trim() === "") {
+        return res.status(400).json({ message: "Invalid category" });
+      }
+
+      // Validate ward (1–200)
+      const wardNum = parseInt(ward, 10);
+      if (isNaN(wardNum) || wardNum < 1 || wardNum > 200) {
+        return res.status(400).json({ message: "Invalid ward number" });
+      }
+
+      const duplicates = await (storage as any).findPotentialDuplicates({
+        ward: wardNum.toString(),
+        category,
+        title,
+      });
+
       res.json(duplicates);
     } catch (err) {
       res.status(500).json({ message: "Duplicate check failed" });

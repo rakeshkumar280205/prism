@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const { toast } = useToast();
   const { language, t } = useI18n();
+  const [, setLocation] = useLocation();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -32,6 +33,7 @@ export default function RegisterPage() {
         title: t("reg.success"),
         description: "Please login with your credentials.",
       });
+      setLocation("/login");
     } catch (err: any) {
       toast({
         title: t("reg.failed"),

@@ -94,17 +94,26 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap lg:flex-nowrap gap-2 items-center">
-            <Select value={filters.ward} onValueChange={(v) => setFilters({ ...filters, ward: v })}>
-              <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
-                <SelectValue placeholder={t("common.ward")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("common.all")} {t("common.ward")}</SelectItem>
-                {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
-                  <SelectItem key={n} value={String(n)}>{t("common.ward")} {n}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            <Input
+              type="number"
+              min={1}
+              max={200}
+              placeholder={`${t("common.ward")} (1–200)`}
+              className="w-full sm:w-[130px] bg-slate-50"
+              value={filters.ward === "all" ? "" : filters.ward}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  setFilters({ ...filters, ward: "all" });
+                  return;
+                }
+                const num = Number(value);
+                if (num >= 1 && num <= 200) {
+                  setFilters({ ...filters, ward: String(num) });
+                }
+              }}
+            />
 
             <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
               <SelectTrigger className="w-full sm:w-[130px] bg-slate-50">
